@@ -16,9 +16,9 @@
 #define VTA_EXPECTED_SPEED 1.5 //in meters per second
 
 #define thresholdDistance 100
-#define thersholdHeading 20
-
+#define thresholdHeading 20
 #define maxTime 5000
+#define turnInterval 100
 
 byte esc1pin = 5;
 byte esc2pin = 6;
@@ -26,17 +26,20 @@ Servo ESC1;
 Servo ESC2;
 MPU9250 mpu;
 
-int steerPWM_F = PWMstall + ((PWMmax_F - PWMstall) * steerPercentPower / 100);
-int steerPWM_R = PWMstall + ((PWMmax_R - PWMstall) * steerPercentPower / 100);
-int forwardPWM = PWMstall + ((PWMmax_F - PWMstall) * commonThrustPower / 100);
+const int steerPWM_F = PWMstall + ((PWMmax_F - PWMstall) * steerPercentPower / 100);
+const int steerPWM_R = PWMstall + ((PWMmax_R - PWMstall) * steerPercentPower / 100);
+const int forwardPWM = PWMstall + ((PWMmax_F - PWMstall) * commonThrustPower / 100);
 
 double commandHeading = 0;
 double commandDistance = 0;
 
 double vta[4] = {0, 0, 0, 0}; //vehicle states: {lat, long, depth, heading (deg)}
-double rov[4] = {0, 0, 0, 0); //VTA depth will always be 0
+double rov[4] = {0, 0, 0, 0}; //VTA depth will always be 0
                                          //otherwise, data will be fed via radio
 double absoluteDistance = 0;
+
+boolean temp = true;
+
 
 void setup()
 {
@@ -44,10 +47,13 @@ void setup()
   Wire.begin();
   ESC1.attach(esc1pin);
   ESC2.attach(esc2pin);
+
+  mpu.setMagneticDeclination(-11); //Assuming the VTA is used in Baltimore, which has a magnetic declination of -11 deg 4'
+  //https://www.magnetic-declination.com/
   
   while (!mpu.setup())
   {
-    Serial.println("Could not find a valid MPU9250 sensor, check wiring!");
+    Serial.println("Could not find a valid MPU9250 sensor");
     delay(1000);
   }
 
@@ -70,28 +76,46 @@ void setup()
   compass.setSamples(HMC5883L_SAMPLES_8);  // Set number of samples averaged
   compass.setOffset(132, 320);  // Set calibration offset. See HMC5883L_calibration.ino
   */
-  newCommand = true;
   delay(2000);
+  Serial.println("Setup complete");
 }
 
 void loop() {
-  UpdateCompassInfo(); // updates compass at 10 Hz
-  updateState();
-  calculateHeadingDistance();
-  if (absoluteDistance > thresholdDistance) {
-    if (commandHeading > thresholdHeading) {
-      turnVTA();
+  if (temp) {
+    updateState();
+    calculateHeadingDistance();
+    if (absoluteDistance > thresholdDistance) {
+      Serial.println("distance > thresh, nav");
+      if (commandHeading > thresholdHeading) {
+        Serial.println("heading > thresh, turning");
+        turnVTA();
+      }
+      runVTA();
     }
-    runVTA();
+    temp = !temp;
   }
 }
 
-
+void updateHeading() {
+  Serial.println("Mag: " + String(mpu.getYaw()));
+  vta[3] = mpu.getYaw();
+}
 
 void turnVTA() {
-  // ensures that the 
-  error = (540 + VTA_bearing - target_bearing) % 360 - 180
 
+  double diff = calcDiff(commandHeading, vta[3]);
+
+  while (abs(diff) > thresholdHeading) {
+    diff = calcDiff(commandHeading, vta[3]);
+    if (diff > 0) {
+      turnRight();
+    } else {
+      turnLeft();
+    }
+    delay(turnInterval);
+    updateHeading();
+  }
+  /*
   if (abs(error) > thresh)
   {
     stopThrust();
@@ -114,23 +138,58 @@ void turnVTA() {
       }
     } 
   }
+  */
 }
 
+double calcDiff(double target, double cur) {
+  double diff = target - cur;
+  if (diff > 0) {
+    diff = (diff > 180 ? (diff - 360) : diff);
+  } else {
+    diff = (diff < -180 ? (diff + 360) : diff);
+  }
+  return diff;
+}
+
+
 void runVTA() {
-  ESC1.writeMicroseconds(forwardPWM);
-  ESC2.writeMicroseconds(forwardPWM);
+  forwardThrust();
   int runTime = commandDistance / VTA_EXPECTED_SPEED * 1000;
-  delay(runTime > maxTime ? maxTime : runTime);
+  int Time = runTime > maxTime ? maxTime : runTime;
+  Serial.println("VTA " + String(commandDistance) + " away, running motors for " + String(Time));
+  delay(Time);
   stopThrust();
 }
 
-void stopThrust() {
-  ESC1.writeMicroseconds(PMWstall);
-  ESC2.writeMicroseconds(PMWstall);
+void forwardThrust() {
+  Serial.println("Going straight");
+  motorInput(forwardPWM, forwardPWM);
 }
 
-void UpdateCompassInfo()
-{
+void stopThrust() {
+  Serial.println("Stopping VTA");
+  motorInput(PWMstall, PWMstall);
+}
+
+void turnRight() {
+  Serial.println("Turning Right");
+  motorInput(steerPWM_F, steerPWM_R);
+}
+
+void turnLeft() {
+  Serial.println("Turning Left");
+  motorInput(steerPWM_R, steerPWM_F);
+}
+
+void motorInput(int one, int two) {
+  ESC1.writeMicroseconds(one);
+  ESC2.writeMicroseconds(two);
+}
+
+void updateState() {
+  Serial.println("Updating vehicle states");  
+  //update VTA Vehicle State Array with GPS, run Kalman Filter if applicable
+    /*
  Vector norm = compass.readNormalize();
 
   // Calculate heading
@@ -149,10 +208,7 @@ void UpdateCompassInfo()
   Serial.print(" Degress = ");
   Serial.print(headingDegrees);
   Serial.println();
-}
-
-void updateState(String command) {  
-  //update VTA Vehicle State Array with GPS, run Kalman Filter if applicable
+  */
   //update ROV Vehicle State Array with radio
   //update absoluteDistance
 }
@@ -187,7 +243,11 @@ double measureHeading(double lat1, double lon1, double lat2, double lon2, double
       heading += 270;
     }
   }
-  return (heading - vta[3]);
+  Serial.println("Target heading -  " + String(heading));
+  Serial.println("Current heading - " + String(vta[3]));
+  double relative = (heading - vta[3]);
+  Serial.println("Command heading - " + String(relative));
+  return relative;
 }
 
 double measureDistance(double lat1, double lon1, double lat2, double lon2) {  // generally used geo measurement function
@@ -197,5 +257,7 @@ double measureDistance(double lat1, double lon1, double lat2, double lon2) {  //
   double a = sin(dLat/2) * sin(dLat/2) +
     cos(lat1 * M_PI / 180) * cos(lat2 * M_PI / 180) *
     sin(dLon/2) * sin(dLon/2);
-  return 1000 * R * 2 * atan2(sqrt(a), sqrt(1-a)); //meters
+  double distance = 1000 * R * 2 * atan2(sqrt(a), sqrt(1-a));
+  Serial.println("Measured distance - " + String(distance));
+  return distance; //meters
 }
