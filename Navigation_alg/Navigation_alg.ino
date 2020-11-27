@@ -8,7 +8,7 @@
 
 #define CALIBRATE true
 
-#define steerPercentPower 25
+#define steerPercentPower 25 //equal to 1600 & 1400
 #define commonThrustPower 75
 
 #define targetHeading 30 //degrees
@@ -26,17 +26,18 @@ Servo ESC1;
 Servo ESC2;
 MPU9250 mpu;
 
-const int steerPWM_F = PWMstall + ((PWMmax_F - PWMstall) * steerPercentPower / 100);
-const int steerPWM_R = PWMstall + ((PWMmax_R - PWMstall) * steerPercentPower / 100);
+const int steerPWM_F = PWMstall + ((PWMmax_F - PWMstall) * steerPercentPower / 100); //1600 @ 25 steerPercentPower
+const int steerPWM_R = PWMstall + ((PWMmax_R - PWMstall) * steerPercentPower / 100); //1400 @ 25 steerPercentPower
 const int forwardPWM = PWMstall + ((PWMmax_F - PWMstall) * commonThrustPower / 100);
 
 double commandHeading = 0;
-double commandDistance = 0;
+double commandDistance = 0; //does not factor depth, just from the coordinate distances
 
 double vta[4] = {0, 0, 0, 0}; //vehicle states: {lat, long, depth, heading (deg)}
 double rov[4] = {0, 0, 0, 0}; //VTA depth will always be 0
                                          //otherwise, data will be fed via radio
-double absoluteDistance = 0;
+double absoluteDistance = 0; //the absolute distance between VTA and ROV, factoring depth of ROV 
+                             //Updated along with the commandDistance Variable
 
 boolean temp = true;
 
@@ -220,6 +221,7 @@ void calculateHeadingDistance() {
   //commandHeading = measureHeading(vta[0], vta[1], rov[0], rov[1], vta[3]);
   commandHeading = targetHeading;
   commandDistance = targetDistance;
+  absoluteDistance = sqrt(commandDistance * commandDistance + rov[2] * rov[2]);
 }
 
 double measureHeading(double lat1, double lon1, double lat2, double lon2, double curHeading) {
