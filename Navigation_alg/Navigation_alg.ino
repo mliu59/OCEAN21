@@ -47,6 +47,8 @@ void setup()
   Wire.begin();
   ESC1.attach(esc1pin);
   ESC2.attach(esc2pin);
+  stopThrust();
+  delay(5000);
 
   mpu.setMagneticDeclination(-11); //Assuming the VTA is used in Baltimore, which has a magnetic declination of -11 deg 4'
   //https://www.magnetic-declination.com/
@@ -67,7 +69,7 @@ void setup()
     mpu.calibrateMag();
   }
 
-  stopThrust();
+  
 
   /*
   compass.setRange(HMC5883L_RANGE_1_3GA);   // Set measurement range
