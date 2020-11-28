@@ -39,6 +39,7 @@ SD card attached to SPI bus as follows:
 #define DOUT  3
 #define CLK  2
 #define LED_PIN 9
+#define thrustLED 8
 #define maxReading 20.0
 
 #define PWMmax_R 1100
@@ -73,6 +74,8 @@ void setup () {
 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
+  pinMode(thrustLED, OUTPUT);
+  digitalWrite(thrustLED, HIGH);
   
   Wire.begin();
   RTC.begin();
@@ -100,8 +103,10 @@ void setup () {
   }
   Serial.println("card initialized.");
 
-  digitalWrite(LED_PIN, LOW);
+  
   delay(5000);
+  digitalWrite(LED_PIN, LOW);
+  digitalWrite(thrustLED, LOW);
 }
 
 
@@ -114,11 +119,16 @@ void loop () {
     Serial.println("File not available");
     return;
   }
+
+  float reading = 0;
+  float prevRdg = 0;
+
+  scale.set_scale(calibration_factor);
+    
+  reading = scale.get_units();
   
   while (millis() < initT + 3600000) { //code will continuously take data for one hour
-    scale.set_scale(calibration_factor);
-
-    float reading = scale.get_units();
+    
     int analogVal = map(abs(reading), 0, maxReading, 0, 255);
 
     analogWrite(LED_PIN, analogVal);
@@ -129,11 +139,17 @@ void loop () {
     dataString = String(now.hour() +  now.minute() + now.second()) + "," + String(reading, 5);
     dataFile.println(dataString);
     
-    delay(1000 / loadCellFrequency); //5 Hz readings
-    if (abs(reading - scale.get_units()) > ((double)thresholdForceChangePerSecond / loadCellFrequency)) {
+    delay(1000 / loadCellFrequency); //10 Hz readings
+
+    prevRdg = reading;
+    reading = scale.get_units();
+    
+    if (abs(reading - prevRdg) > ((double)thresholdForceChangePerSecond / loadCellFrequency)) {
+      digitalWrite(thrustLED, HIGH);
       forwardThrust();
       delay(thrustTime);
       stopThrust();
+      digitalWrite(thrustLED, LOW);
     }
     
   }
