@@ -32,14 +32,29 @@ SD card attached to SPI bus as follows:
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
-
+#include <Servo.h>
 #include "RTClib.h"
 #include <HX711_ADC.h>
 #include <HX711.h>
 #define DOUT  3
 #define CLK  2
-#define LED_PIN 6
+#define LED_PIN 9
 #define maxReading 20.0
+
+#define PWMmax_R 1100
+#define PWMmax_F 1900
+#define PWMstall 1500
+#define commonThrustPower 75
+#define thrustTime 5000
+#define loadCellFrequency 10 //in Hz
+#define thresholdForceChangePerSecond 2.0 //if the rate of change in force deceted by the load cell is more than this value, motors will engage 
+
+byte esc1pin = 5;
+byte esc2pin = 6;
+Servo ESC1;
+Servo ESC2;
+
+const int forwardPWM = PWMstall + ((PWMmax_F - PWMstall) * commonThrustPower / 100);
 
 HX711 scale;
 
@@ -50,6 +65,11 @@ const int chipSelect = 4;
 
 void setup () {
   Serial.begin(57600);
+  ESC1.attach(esc1pin);
+  ESC2.attach(esc2pin);
+  stopThrust();
+
+
 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
@@ -80,9 +100,8 @@ void setup () {
   }
   Serial.println("card initialized.");
 
-  
-
   digitalWrite(LED_PIN, LOW);
+  delay(5000);
 }
 
 
@@ -110,7 +129,13 @@ void loop () {
     dataString = String(now.hour() +  now.minute() + now.second()) + "," + String(reading, 5);
     dataFile.println(dataString);
     
-    delay(100); //10 Hz data rate
+    delay(1000 / loadCellFrequency); //5 Hz readings
+    if (abs(reading - scale.get_units()) > ((double)thresholdForceChangePerSecond / loadCellFrequency)) {
+      forwardThrust();
+      delay(thrustTime);
+      stopThrust();
+    }
+    
   }
   dataFile.close();
   digitalWrite(LED_PIN, LOW);
@@ -118,4 +143,17 @@ void loop () {
   while(1) {
     
   }
+}
+
+void motorInput(int one, int two) {
+  ESC1.writeMicroseconds(one);
+  ESC2.writeMicroseconds(two);
+}
+
+void stopThrust() {
+  motorInput(PWMstall, PWMstall);
+}
+
+void forwardThrust() {
+  motorInput(forwardPWM, forwardPWM);
 }

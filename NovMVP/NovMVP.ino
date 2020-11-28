@@ -39,7 +39,7 @@ void loop() {
   scale.set_scale(calibration_factor); //Adjust to this calibration factor
   float initReading = scale.get_units();
   delay(1000 / loadCellFrequency); //5 Hz readings
-  if (abs(initReading - scale.get_units) > ((double)thresholdForceChangePerSecond / loadCellFrequency)) {
+  if (abs(initReading - scale.get_units()) > ((double)thresholdForceChangePerSecond / loadCellFrequency)) {
     forwardThrust();
     delay(thrustTime);
     stopThrust();
