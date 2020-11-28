@@ -35,9 +35,11 @@ SD card attached to SPI bus as follows:
 
 #include "RTClib.h"
 #include <HX711_ADC.h>
-#include "HX711.h"
+#include <HX711.h>
 #define DOUT  3
 #define CLK  2
+#define LED_PIN 6
+#define maxReading 20.0
 
 HX711 scale;
 
@@ -48,7 +50,10 @@ const int chipSelect = 4;
 
 void setup () {
   Serial.begin(57600);
- 
+
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);
+  
   Wire.begin();
   RTC.begin();
  
@@ -75,28 +80,42 @@ void setup () {
   }
   Serial.println("card initialized.");
 
-  File dataFile = SD.open("datalog.txt", FILE_WRITE);
-  if (!dataFile) {
-    Serial.println("File not available");
-    return;
-  }
+  
+
+  digitalWrite(LED_PIN, LOW);
 }
 
 
  
 void loop () {
   unsigned long initT = millis();  
+
+  File dataFile = SD.open("datalog.txt", FILE_WRITE);
+  if (!dataFile) {
+    Serial.println("File not available");
+    return;
+  }
   
   while (millis() < initT + 3600000) { //code will continuously take data for one hour
     scale.set_scale(calibration_factor);
+
+    float reading = scale.get_units();
+    int analogVal = map(abs(reading), 0, maxReading, 0, 255);
+
+    analogWrite(LED_PIN, analogVal);
     
     DateTime now = RTC.now();
     
     String dataString = "";
-    dataString = String(now.hour() +  now.minute() + now.second()) + "," + String(scale.get_units(), 5);
+    dataString = String(now.hour() +  now.minute() + now.second()) + "," + String(reading, 5);
     dataFile.println(dataString);
     
     delay(100); //10 Hz data rate
   }
   dataFile.close();
+  digitalWrite(LED_PIN, LOW);
+
+  while(1) {
+    
+  }
 }
