@@ -14,11 +14,11 @@
 #define expectedForce1 1.0
 #define expectedForce2 3.5
 #define expectedForce3 7.0
-
+/*
 #define LED1 10
 #define LED2 11
 #define LED3 12
-
+*/
 byte esc1pin = 5;
 byte esc2pin = 6;
 Servo ESC1;
@@ -30,14 +30,18 @@ const int forwardPWM = PWMstall + ((PWMmax_F - PWMstall) * commonThrustPower / 1
 
 HX711 scale;
 
+boolean thrust = false;
+unsigned long initT = 0;
+
 float calibration_factor = 20000.21; //-7050 worked for my 440lb max scale setup
 
 void setup() {
   Serial.begin(9600);
+  link.begin(9600);
   ESC1.attach(esc1pin);
   ESC2.attach(esc2pin);
   stopThrust();
-  delay(5000);
+  delay(5000);/*
 
   pinMode(10, OUTPUT);
   pinMode(11, OUTPUT);
@@ -45,7 +49,7 @@ void setup() {
   digitalWrite(10, LOW);
   digitalWrite(11, LOW);
   digitalWrite(12, LOW);
-
+*/
   scale.begin(DOUT, CLK);
   scale.set_scale();
   scale.tare(); //Reset the scale to 0
@@ -57,7 +61,7 @@ void loop() {
   float initReading = scale.get_units();
 
 
-
+/*
   if (initReading < expectedForce1) {
     digitalWrite(10, LOW);
     digitalWrite(11, LOW);
@@ -75,15 +79,20 @@ void loop() {
     digitalWrite(11, HIGH);
     digitalWrite(12, HIGH);
   }
-
+*/
 
 
   
   link.println(String(initReading));
   delay(1000 / loadCellFrequency); //5 Hz readings
-  if (abs(initReading - scale.get_units()) > ((double)thresholdForceChangePerSecond / loadCellFrequency)) {
+  if (!thrust && (abs(initReading - scale.get_units()) > ((double)thresholdForceChangePerSecond / loadCellFrequency))) {
+    thrust = true;
+    initT = millis();
     forwardThrust();
-    delay(thrustTime);
+  }
+
+  if (thrust && (millis() > initT + thrustTime)) {
+    thrust = false;
     stopThrust();
   }
 }
