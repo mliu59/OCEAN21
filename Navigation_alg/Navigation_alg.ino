@@ -13,9 +13,9 @@
 
 #define targetHeading 30 //degrees
 #define targetDistance 50 //meters
-#define VTA_EXPECTED_SPEED 1.5 //in meters per second
+const double VTA_EXPECTED_SPEED 1.5 //in meters per second
 
-#define thresholdDistance 100
+#define thresholdDistance 5
 #define thresholdHeading 20
 #define maxTime 5000
 #define turnInterval 100
@@ -87,15 +87,20 @@ void loop() {
   if (temp) {
     updateState();
     calculateHeadingDistance();
+    //Serial.println("absoluteDistance - " + String(absoluteDistance));
     if (absoluteDistance > thresholdDistance) {
       Serial.println("distance > thresh, nav");
       if (commandHeading > thresholdHeading) {
         Serial.println("heading > thresh, turning");
         turnVTA();
+      } else {
+        Serial.println("Current heading within target threshold");
       }
       runVTA();
+    } else {
+      Serial.println("distance within threshold");
     }
-    temp = !temp;
+    temp = false;
   }
 }
 
@@ -157,7 +162,7 @@ double calcDiff(double target, double cur) {
 
 void runVTA() {
   forwardThrust();
-  int runTime = commandDistance / VTA_EXPECTED_SPEED * 1000;
+  long runTime = commandDistance / VTA_EXPECTED_SPEED * 1000;
   int Time = runTime > maxTime ? maxTime : runTime;
   Serial.println("VTA " + String(commandDistance) + " away, running motors for " + String(Time));
   delay(Time);
