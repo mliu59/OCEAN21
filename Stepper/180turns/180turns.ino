@@ -30,7 +30,7 @@ float stepSize[] = {4, 4};
 float startCoords[] = {0, 0};
 float endCoords[] = {64, 24};
 
-float inchDistance = 12 * 5.0;
+int Time = 5000;
 
 void setup() {
   pinMode(pulsePin[x], OUTPUT);
@@ -44,32 +44,21 @@ void setup() {
 }
 
 void loop() {
-  actuate(inchDistance);
+  actuate(Time, false);
   delay(1500);
-  actuate(-1 * inchDistance);
+  actuate(Time, true);
 }
 
-void actuate(float distance) {
+void actuate(int ms, boolean direc) {
   int motorNum = 0;
 
-  //If negative distance, flip direction
-  if (distance < 0) {
-    dir[motorNum] = !dir[motorNum];
-  }
+  digitalWrite(dirPin[motorNum], direc);
 
   //Loop that pulses the stepper the appropriate amount
-  unsigned long totalPulses = abs(distance) / leadVal[motorNum] * pulsePerRev[motorNum];
+  unsigned long totalPulses = ms * 1000 / pulseDelay[motorNum];
   for (int i = 0; i < totalPulses; i++) {
     digitalWrite(pulsePin[motorNum], HIGH);
     delayMicroseconds(pulseDelay[motorNum]);
     digitalWrite(pulsePin[motorNum], LOW);
   }
-
-  //If negative distance, flip direction back to positive
-  if (distance < 0) {
-    dir[motorNum] = !dir[motorNum];
-  }
-
-  //Updates the position of the obstruction
-  pos[motorNum] = pos[motorNum] + distance;
 }
