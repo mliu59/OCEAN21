@@ -47,6 +47,7 @@ void loop() {
   actuate(Time, false);
   delay(1500);
   actuate(Time, true);
+  delay(1500);
 }
 
 void actuate(int ms, boolean direc) {
