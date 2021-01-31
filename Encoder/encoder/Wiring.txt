@@ -1,0 +1,16 @@
+red	Vcc
+black	GND
+green	A
+white	B
+yellow	Z
+brown	A-
+grey	B-
+orange	Z-
+
+
+
+red to 5V
+black to GND
+green to pin2 (interrupt)
+white to pin3 (interrupt)
+ignore yellow, brown, grey, orange
