@@ -1,0 +1,67 @@
+setup constants
+	see images in directory folder
+		theta1
+		theta2
+		theta3
+	forward thrust PWM
+	reverse thrust PWM
+	turning forward thrust PWM (smaller than forward thrust PWM)
+	stall PWM
+	forward_thrust_time
+	
+import libs
+declare global vars:
+	max_encoder_position
+	min_encoder_position
+	mid_encoder_position
+	angle
+
+setup components
+	loadcell
+	PWM motors (delay 5000 ms to properly setup)
+
+
+
+
+loop
+	read encoder raw value
+	if (greater or smaller than boundary values) {
+		update boundary values
+		recalculate the encoder raw value that correponds to the midpoint
+	}
+	update angle global var by mapping raw value to new min & max values
+	
+	read load cell as firstReading
+	delay by constant deltaT
+	read load cell as secondReading
+	find change_in_force_per_unit_time
+		(secondReading - firstReading) / deltaT
+	if (change_in_force_per_unit_time greater than threshold_change_in_force_per_unit_time) {
+		activateThrusters
+			if (angle > theta2) {
+				while (angle > theta2) {
+					full differential thrust (left vs. right)
+					read and update angle
+				}
+			}
+			if (angle > theta1) {
+				start timer variable
+				while (angle > theta1) {
+					Proprotional control:
+						find theta error (desired 0 angle)
+						kd * error = PWM_difference
+						set one thruster to (turning forward thrust PWM + PWM_difference)
+						set one thruster to (turning forward thrust PWM - PWM_difference)
+					read and update angle
+					check timer
+						if (it has been forward_thrust_time since start of timer) {
+							break out of while loop
+						}
+				}
+				calculate the remainder of time until it has been forward_thrust_time since start of timer
+				use the rest of the time for forward thrust
+				
+			} else {
+				forward thrust for forward_thrust_time
+			}
+	}
