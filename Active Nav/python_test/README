@@ -1,0 +1,70 @@
+NOTE: everything in the Active Nav system is built on Ubuntu 18.04, mostly because Linux is pretty much an industry stnadard for robotics. 
+Most code/bash commands given in forums and official tutorials are written for Linux. Running on Linux also gives the option of intergrating ROS (which may not be necessary)
+Tutorial on how to install and run Ubuntu 18.04 on a Windows machine via VirtualBox: https://brb.nci.nih.gov/seqtools/installUbuntu.html
+I am using Visual Studio Code as my code IDE. It has so many quality of life plugins that will make code writing alot less tedious and frustrating
+
+
+*********************
+
+The active nav system is entirely based on the baseline workflow of the PX4, which is an autopilot
+(note that PX4 is NOT PixHawk. PX4 is the software/firmware package that PixHawk runs off of, while PixHawk is the actual Hardware. ArduPilot serves the same role as PX4 in this case)
+
+PX4 communicates internally AND with a command station (PC) via MAVLink.
+https://mavlink.io/en/
+Via MAVLink, unmanned vehicles are able to receive command messages from ground control, as well as report on its state and other info
+This communication is made human-reable through ground control software
+for the PX4, QGroundControl is the standard ground control software.
+NOTE: QGroundControl is not the core process that sends and receives MAVLink connection messages. It is only a user-end software that makes things easier to use and interpret.
+This means that other MAVLink processes can bypass QGroundControl, while still communicating with PX4 
+https://www.qgroundcontrol.com
+
+
+PX4 has prebuilt navigation algorithms and controls to take care of literally all of the low level stuff of simple USV manuevers.
+Unless the USV is in a manual control mode, PX4 can completely operate off of extremely high level commands such as:
+- go to a location
+- follow an object at given location with a certain standoff distance
+- report vehicle health (battery percentage, GPS fix, positional data, etc.)
+- return to starting location
+- etc.
+This makes writing a script for vehicle command very easy. For this project, scripts will be in Python (another industry standard lmao)
+We'll be relying very heavily on MAVSDK, which is a library that makes interfacing into MAVLink connections extremely easy.
+https://mavsdk.mavlink.io
+
+
+***********
+Tutorial on how to setup a standard development environment for MAVSDK and PX4 in general through connection to a virtually simulated drone running PX4:
+https://mavsdk.mavlink.io/develop/en/python/
+https://docs.px4.io/master/en/simulation/jmavsim.html
+
+To my knowledge, MAVSDK needs to be run with Python 3+, because it relies on the python asyncio package, which doesn't work well with python2
+Make sure python version is correct
+
+The MAVSDK-Python repo has a number of prebuilt examples in the example folder. Honestly these already cover an extremely wide range of functions, including the follow_me mode commands
+https://github.com/mavlink/MAVSDK-Python/tree/main/examples
+
+To be safe, following the code structure of the examples is probably the safest way to do anything with MAVSDK:
+The examples rely on asyncio, which is a package for concurrent programming (running multiple programs/tasks simultaneously)
+https://realpython.com/lessons/what-asyncio/
+https://docs.python.org/3/library/asyncio.html
+https://realpython.com/async-io-python/
+
+Overall, being able to concurrently run python modules means that we can concurrently run multiple command sequences for MAVLink, such as regularly updating target coords, check battery percentage, and carry out a predetermined mission, all at one without disrupting the flow of the other programming threads. 
+
+Understanding how asyncio works helps with understanding the code structure and how to write tasks. Otherwise, just follow the same code structure as the examples
+
+basic_mavsdk.py and test.py are WIP pytho modules for achieving what we want with the active nav system
+
+*************************************
+
+Oceaneering will be providing the ROV state data to our control station (PC) via a TCP/Ethernet connection.
+Python has a pretty well established network connection package, socket, for this purpose. 
+
+https://realpython.com/python-sockets/
+
+tcp.py and tcp_client.py are built off of the echo client and server examples in the tutorial above.
+
+*****************************************
+
+
+TODO: find a way to have socket and the example client/server code work with the asyncio code flow. 
+Promising lead: https://stackoverflow.com/questions/48506460/python-simple-socket-client-server-using-asyncio
