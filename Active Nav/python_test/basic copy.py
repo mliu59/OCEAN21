@@ -14,7 +14,6 @@ class info:
         def setVal(self, newVal):
             self.val.set(newVal)
             
-
     def __init__(self, title, items, root):
         self.title = title
         self.list = []
@@ -48,6 +47,9 @@ class commandDeque:
         return len(self.command)
     def clear(self):
         self.command.clear()
+    def add(self, data):
+        #TODO
+        self.addTop(data)
                
 def initGUI():
     window = tk.Tk(className='-- Info GUI --')
@@ -68,16 +70,19 @@ def initGUI():
     rInfo.display()
     
     return window
-        
 
-async def main_loop():
-    
-    window = initGUI()
-    
-    GUI_task = asyncio.ensure_future(updateGUI(window))
-    timer_task = asyncio.ensure_future(timer(window))
+def got_stdin_data(q):
+    asyncio.ensure_future(q.put(sys.stdin.readline()))
+
+async def main_loop(asyncQueue):
     
     command = commandDeque()
+    window = initGUI()
+    
+    
+    transfer_task = asyncio.ensure_future(transferQueue(command, asyncQueue))
+    GUI_task = asyncio.ensure_future(updateGUI(window))
+    timer_task = asyncio.ensure_future(timer(window))
     
     while 1:
         data = None
@@ -88,6 +93,12 @@ async def main_loop():
             break
         print(data)
         await asyncio.sleep(3)
+
+async def transferQueue(command, q, interval=0.2):
+    while 1:
+        data = await q.get()
+        command.add(data)
+        await asyncio.sleep(interval)
 
 async def timer(root):
     v = tk.StringVar()
@@ -105,5 +116,7 @@ async def updateGUI(root, interval=0.5):
         await asyncio.sleep(interval)
 
 if __name__ == "__main__":
+    q = asyncio.Queue()
     event_loop = asyncio.get_event_loop()
-    event_loop.run_until_complete(main_loop())
+    event_loop.add_reader(sys.stdin, got_stdin_data, q)
+    event_loop.run_until_complete(main_loop(q))
