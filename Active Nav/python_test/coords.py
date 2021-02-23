@@ -1,13 +1,9 @@
-import socket
-import time
-import random
+from collections import deque
 
-encoding = 'utf-8'
+command = deque()
 
-while True:
-    randLat = random.randint(40, 43) + random.random()
-    randLon = random.randint(40, 43) + random.random()
-    unicode_str = "Random Coords: %.8f , %.8f" % (randLat, randLon)
-    print(unicode_str)
-    print(unicode_str.encode(encoding))
-    time.sleep(5)
+command.append("a")
+command.append(64)
+command.append('lmao')
+command.append([123, 342])
+print(command)

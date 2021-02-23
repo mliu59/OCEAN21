@@ -1,15 +1,11 @@
 import asyncio
 from mavsdk import System
 from mavsdk.follow_me import (Config, FollowMeError, TargetLocation)
-import socket
 import math
+import sys
 
-HOST = '127.0.0.1'
-PORT = 11111
-encoding = 'utf-8'
-
-default_height = 8.0 #in Meters
-follow_distance = 50.0 #in Meters, this is the distance that the drone will remain away from Target while following it 
+default_height = 2.0 #in Meters
+follow_distance = 10.0 #in Meters, this is the distance that the drone will remain away from Target while following it 
 #Direction relative to the Target 
 #Options are NONE, FRONT, FRONT_LEFT, FRONT_RIGHT, BEHIND
 direction = Config.FollowDirection.BEHIND
@@ -18,34 +14,18 @@ responsiveness =  0.02
 #This list contains fake location coordinates (These coordinates are obtained from mission.py example)
 fake_location = [[47.398039859999997,8.5455725400000002],[47.398036222362471,8.5450146439425509],[47.397825620791885,8.5450092830163271]]
 
-async def run():
+def got_stdin_data(q):
+    asyncio.ensure_future(q.put(sys.stdin.readline()))
+
+async def main_loop():
     
     drone = System()
-    await drone.connect(system_address="udp://:14540")
-
-    print("Waiting for drone to connect...")
-    async for state in drone.core.connection_state():
-        if state.is_connected:
-            print(f"Drone discovered with UUID: {state.uuid}")
-            break
-
-    print("Waiting for global position estimate...")
-    async for health in drone.telemetry.health():
-        if health.is_global_position_ok:
-            print("Global position estimate ok")
-            break
-    """
-    # Connect to client
-    print("Connecting to client...")
+    await connect_drone(drone)
     
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((HOST, PORT))
-        s.listen()
-        conn, addr = s.accept()
-        with conn:
-            print('Connected via ', addr)
-    """
+
     
+    
+    print("Initializing tasks")
     # Start parallel tasks
     print_altitude_task = asyncio.ensure_future(print_altitude(drone))
     print_flight_mode_task = asyncio.ensure_future(print_flight_mode(drone))
@@ -84,9 +64,26 @@ async def run():
     print ("-- Stopping Follow Me Mode")
     await drone.follow_me.stop()
     await asyncio.sleep(100)
+    
+    await drone.action.home()
 
     print("-- Landing")
     await drone.action.land()
+
+async def connect_drone(drone):
+    await drone.connect(system_address="udp://:14540")
+
+    print("Waiting for drone to connect...")
+    async for state in drone.core.connection_state():
+        if state.is_connected:
+            print(f"Drone discovered with UUID: {state.uuid}")
+            break
+
+    print("Waiting for global position estimate...")
+    async for health in drone.telemetry.health():
+        if health.is_global_position_ok:
+            print("Global position estimate ok")
+            break
 
 async def print_altitude(drone):
     prev_alt = None
@@ -138,4 +135,12 @@ async def observe_is_in_air(drone, running_tasks):
 
 
 if __name__ == "__main__":
-    asyncio.get_event_loop().run_until_complete(run())
+ 
+    q = asyncio.Queue()
+    event_loop = asyncio.get_event_loop()
+    event_loop.add_reader(sys.stdin, got_stdin_data, q)
+    
+    try:
+        event_loop.run_until_complete(main_loop())
+    finally:
+        event_loop.close()
