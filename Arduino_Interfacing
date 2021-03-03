@@ -1,0 +1,30 @@
+/*
+void setup() {
+  Serial.begin(9600);
+
+}
+
+void loop() {
+  for (int i = 0; i < 256; i++) {
+    analogWrite(9, i);
+    Serial.println("Hello");
+    Serial.println(i);
+    delay(20);
+  }
+}
+ */
+ 
+
+byte PWM_PIN = (A0);
+ 
+int pwm_value;
+ 
+void setup() {
+  pinMode(PWM_PIN, INPUT);
+  Serial.begin(9600);
+}
+ 
+void loop() {
+  pwm_value = pulseIn(PWM_PIN, HIGH);
+  Serial.println(pwm_value);
+}
