@@ -195,54 +195,9 @@ void loop() {
       Serial.print(",");
       Serial.print(mpu.getPitch(), 2);
       Serial.print(",");
-      Serial.print(mpu.getYaw(), 2);
-      Serial.print(",");
-      Serial.println(mpu.getMagX(), 2);
-  
-      display.setCursor(0, 0);
-      display.clearDisplay();
-      display.println("Roll  X " + String(mpu.getRoll(), 2));
-      display.println("Pitch Y " + String(mpu.getPitch(), 2));
-      display.println("Yaw   Z " + String(mpu.getYaw(), 2));
-      display.display();
+      Serial.println(mpu.getYaw(), 2);
       
       delay(IMU_READ_PERIOD_MS);
     }
     
-  /*}
-  if (newData) {
-    gps.f_get_position(&lat, &lon, &age); //read from gps encoded data and store them.
-    newGPSTime = millis();
-    P0 = P;
-    x0 = x;
-    
-    z = {lat, lon, aN, aE};
-    
-    //float NS = TinyGPS::distance_between(slat, slon, flat, slon);
-    A = {1, 0, deltaT, 0, deltaT*deltaT/2, 0, 
-         0, 1, 0, deltaT, 0, deltaT*deltaT/2,
-         0, 0, 1, 0, deltaT, 0,
-         0, 0, 0, 1, 0, deltaT,
-         0, 0, 0, 0, 1, 0,
-         0, 0, 0, 0, 0, 1};
-    x_ = (A * x0) + (B * u);
-    P_ = (A * P0 * ~A) + Q;
-
-    Matrix<4, 4> temp = H * P_ * ~H + R;
-    K = P_ * ~H * temp.Inverse();
-    x = x_ + K * (z - (H * x_));
-    P = (I - (K * H)) * P_;
-
-    dataString = String(millis()) + "," + String(lat, 6) + "," + String(lon, 6);
-    
-    if (dataFile) {
-      dataFile.println(dataString);
-      dataFile.close();
-      //Serial.println(dataString);
-    }
-    else {
-      Serial.println("error opening datalog.csv");
-    }
-  }
-  */
 }
