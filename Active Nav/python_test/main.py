@@ -60,6 +60,8 @@ FOLLOW_DISTANCE = 2.0 #in Meters, this is the distance that the drone will remai
 FOLLOW_DIRECTION = Config.FollowDirection.BEHIND #NONE, FRONT, FRONT_LEFT, FRONT_RIGHT, BEHIND
 FOLLOW_RESPONSIVENESS = 0.02
 DEQUE_RESPOND_PERIOD = 1
+HOST = '127.0.0.1'  # The server's hostname or IP address
+PORT = 8888        # The port used by the server
 
 class info:
     class topic:
@@ -281,18 +283,13 @@ async def processCommand(drone, deque):
         #print(command)
         #await asyncio.sleep(0.1)
         
-async def tcp_echo_client(loop): #network client
+async def tcp_echo_client(loop):
     reader, writer = await asyncio.open_connection('127.0.0.1', 8888,
                                                    loop=loop)
     while True:
         data = await reader.read(255)
         if data:
-            parseData(data.decode())
-        await asyncio.sleep(1)
-        
-def parseData(inputStr): #network client
-    ##TODO##
-    return
+            print('Received: %r' % data.decode())
 
 def update_drone_info(drone, info):
     a = asyncio.ensure_future(batteryAsync(drone, info))
@@ -329,7 +326,7 @@ async def originAsync(drone, info):
         info.updateVal("Origin_Alt", origin.altitude_m)
     await asyncio.sleep(INFO_UPDATE_PERIOD)
 """
-    
+
 async def parseCommand(command, q, interval=0.1):
     """
     for parsing command from stdinput before adding it to the command deque
@@ -405,7 +402,7 @@ async def main_loop(asyncQueue, loop):
     GUI_task = asyncio.ensure_future(updateGUI(command, window))
     dataLogging_task = asyncio.ensure_future(outputToDataLog([dInfo, rInfo], command, DATALOG_FILENAME, DATALOG_OUTPUT_MODE))
     updateInfoTasks = update_drone_info(drone, dInfo)
-    #print_coords_task = asyncio.ensure_future(tcp_echo_client(asyncio.get_event_loop()))
+    print_coords_task = asyncio.ensure_future(tcp_echo_client(loop))
     
     mainTask = asyncio.ensure_future(processCommand(drone, command))
     await mainTask

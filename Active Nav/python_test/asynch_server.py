@@ -1,12 +1,30 @@
 import asyncio
 import random
+import serial
+import time
 
 async def handle_echo(reader, writer):
     #data = await reader.read(100)
     #message = data.decode()
     #addr = writer.get_extra_info('peername')
     #print("Received %r from %r" % (message, addr))
-
+    a = serial.Serial('/dev/ttyS0', 9600)
+    print(a.name)
+    print("Serial connected")
+    await asyncio.sleep(5)
+    #data = []
+    
+    
+    
+    while True:
+        string = a.readline()
+        decoded = string.decode().rstrip()
+        print(decoded)
+        writer.write(string)
+        await writer.drain()
+        await asyncio.sleep(5)
+        
+    """
     while True:
         randLat = 0.001 * random.random()
         randLon = 0.001 * random.random()
@@ -15,6 +33,7 @@ async def handle_echo(reader, writer):
         writer.write(b"Random Coords: %.8f , %.8f" % (randLat, randLon))
         await writer.drain()
         await asyncio.sleep(10)
+    """
     #print("Close the client socket")
     #writer.close()
 
