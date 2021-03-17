@@ -11,13 +11,13 @@ from mavsdk.follow_me import (Config, FollowMeError, TargetLocation)
 testCommands = ["arm",
                 "takeoff",
                 "hold,5",
-                "goto,47.39803985,8.54557254",
-                "goto,47.39803622,8.54501464",
-                "goto,47.39782562,8.54500928",
+                #"goto,47.39803985,8.54557254",
+                #"goto,47.39803622,8.54501464",
+                #"goto,47.39782562,8.54500928",
                 "hold,5",
-                "goto,47.39803985,8.54557254",
-                "goto,47.39803622,8.54501464",
-                "goto,47.39782562,8.54500928",
+                #"goto,47.39803985,8.54557254",
+                #"goto,47.39803622,8.54501464",
+                #"goto,47.39782562,8.54500928",
                 "hold,5",
                 "land",
                 "disarm"]
@@ -198,8 +198,8 @@ def textVarLabel(window, var, c, r):
         tk.Label(window, textvariable=var, anchor=tk.W, width=GUI_ITEM_WIDTH).grid(sticky="E", column=c)
     else:
         tk.Label(window, textvariable=var, anchor=tk.W, width=GUI_ITEM_WIDTH).grid(sticky="E", column=c, row=r)
-def got_stdin_data(q):
-    asyncio.ensure_future(q.put(sys.stdin.readline().replace('\n', '')))
+#def got_stdin_data(q):
+#    asyncio.ensure_future(q.put(sys.stdin.readline().replace('\n', '')))
 
 async def processCommand(drone, deque):
     while 1:
@@ -374,7 +374,8 @@ async def updateGUI(command, root, interval=0.1):
 async def main_loop(asyncQueue, loop):    
     
     drone = System()
-    await drone.connect(system_address="udp://:14540")
+    await drone.connect(system_address="udp://:14550")
+    #await drone.connect(system_address = "serial://COM24:57600") #system_address="udp://:14540"
     
     print("Waiting for drone to connect...")
     async for state in drone.core.connection_state():
@@ -410,5 +411,5 @@ async def main_loop(asyncQueue, loop):
 if __name__ == "__main__":
     q = asyncio.Queue()
     event_loop = asyncio.get_event_loop()
-    event_loop.add_reader(sys.stdin, got_stdin_data, q)
+    #event_loop.add_reader(sys.stdin, got_stdin_data, q)
     event_loop.run_until_complete(main_loop(q, event_loop))
