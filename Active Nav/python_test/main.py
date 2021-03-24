@@ -235,6 +235,7 @@ async def processCommand(drone, deque):
                 try:
                     lat = float(args[1])
                     lon = float(args[2])
+                    absolute_altitude = 0.0
                     async for terrain_info in drone.telemetry.home():
                         absolute_altitude = terrain_info.absolute_altitude_m
                         break
@@ -375,7 +376,7 @@ async def main_loop(asyncQueue, loop):
     
     drone = System()
     await drone.connect(system_address="udp://:14550")
-    #await drone.connect(system_address = "serial://COM24:57600") #system_address="udp://:14540"
+    #await drone.connect(system_address = "serial://COM12:57600") #system_address="udp://:14540"
     
     print("Waiting for drone to connect...")
     async for state in drone.core.connection_state():
