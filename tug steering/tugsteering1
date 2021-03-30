@@ -1,0 +1,222 @@
+#define theta1
+#define theta2
+#define theta3
+#define f_thrust  //forward thurst pwm
+#define r_thrust  //reverse thrust pwm
+#define f_turn    //turning forward thrust pwm
+#define f_thrust_time //forward thrust time
+#define stallPWM 1500 //stall pwm
+#define loadCellFrequency 5 //in Hz
+#define thresholdForceChangePerSecond 2.0 
+
+#define TARGET 145.0
+#define maxPWM 1900
+#define minPWM 1100
+#define stallPWM 1500
+#define minThrustThresh 150
+
+#include <MPU9250.h>
+#define calib false
+#define IMU_READ_PERIOD_MS 25
+#define mag_dec -3.11
+
+//#include "eeprom_utils.h"
+#include <Wire.h>
+#include <Servo.h> 
+#include <HX711_ADC.h>
+#include "HX711.h"
+
+#define DOUT1  3
+#define CLK1  2
+#define DOUT2 5
+#define CLK2 4
+#define boundary_value
+
+float calibration_factor1 = 20000.21;
+float calibration_factor2 = 20000.21;//-7050 worked for my 440lb max scale setup
+HX711 scale1;
+HX711 scale2;
+byte esc1pin=5;
+byte esc2pin=6;
+
+Servo rightESC;
+Servo leftESC;
+
+#define max_encoder_pos
+#define min_encoder_pos
+#define mid_encoder_pos
+#define angle
+#define deltaT 1000
+MPU9250 mpu;
+
+double starting;
+double targetAbs;
+
+
+double getAbs(double a, double rel) {
+  double b = a + rel;
+  if (b > 180) {
+    return b - 360;
+  } else if (b < -180) {
+    return b + 360;
+  } 
+  return b;
+}
+
+double getRel(double cur, double tar) {
+  double c, t;
+  c = cur;
+  if (cur > tar) {
+    t = tar + 360;
+  } else {
+    t = tar;
+  }
+  double r = t - c;
+  double l = 360 - r;
+  return (r < l) ? r : -l;
+}
+
+int clip(int val, int lower, int upper) {
+  //if (val < lower) {
+  //  return lower;
+  //} else
+  if (val > upper) {
+    return upper;
+  } else {
+    return val;
+  }
+}
+void setup() {
+  
+  Serial.begin(115200);
+  Wire.begin();
+  rightESC.attach(esc1pin);
+  leftESC.attach(esc2pin);
+  delay(5000);
+
+  //load cell
+  Serial.begin(9600);
+  scale1.begin(DOUT1, CLK1);
+  scale2.begin(DOUT2, CLK2);
+  
+  scale1.set_scale();
+  scale2.set_scale();
+  scale1.tare();
+  scale2.tare();//Reset the scale to 0
+
+ 
+  
+
+
+
+
+
+
+   // Open serial communications and wait for port to open:
+    
+  if (!mpu.setup(0x68)) {
+    while(1) {
+      Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
+      delay(5000);
+    }
+  }
+
+  if (calib) {
+    Serial.println("Accel & Gyro");
+    mpu.calibrateAccelGyro();
+    Serial.println("Mag");
+    mpu.calibrateMag();
+    //mpu.saveCalibration();    
+  }
+  
+  //loadCalibration();
+  mpu.setMagneticDeclination(mag_dec);
+
+  while (!mpu.update()) {
+    Serial.println("Init reading failed");
+    delay(100);
+  }
+
+  unsigned long initT = millis();
+  Serial.println("Waiting for PID reset");
+  while (millis() < initT + 10000) {
+    mpu.update();
+    delay(50);
+  }
+  
+  starting = mpu.getYaw();
+  targetAbs = getAbs(starting, TARGET);
+
+  Serial.println("Starting Yaw: " + String(starting));
+  Serial.println("Rel Target: " + String(TARGET));
+  Serial.println("Abs Target: " + String(targetAbs));
+
+
+
+  
+  long zero_factor1 = scale1.read_average(); //Get a baseline reading
+  long zero_factor  =scale2.read_average();
+  delay(20000);
+}
+//need to add how to read load cell
+void loop() { 
+  double firstReading=readLoadCell(); //I am not extracting the right values from this
+  delay(deltaT);
+  double secoundReading=readLoadCell();
+  force_dt=(secondReading-firstReading)/deltaT;
+  if (force_dt>thresholdForceChangePerSecond){
+    if (angle>theta2) {
+      while (angle>theta2) {
+        diffThrust();
+        angle=readLoadCell(); //I dont know if im getting this data correctly
+      }
+    }
+    if (angle>theta1) {
+      startTime=millis();
+      while (angle>theta1){
+        error=theta1-angle;
+        PWM_diff=kd*error
+        motorInput(f_turn+PWM_diff,f_turn-PWM_diff);
+        angle=readLoadCell();
+        currentTime=millis();
+        elapsedTime=currentTime-startTime();
+          if (elapsedTime>forward_thrust_time) {
+            break
+          }
+        thrustTime=f_thrust_time-elapsedTime
+        motorInput(f_thrust,f_thrust);
+        delay(thrustTime)
+        stopThrust();
+      }
+    }
+    else {
+      motorInput(f_thrust,f_thrust);
+      delay(f_thrustTime)
+    }
+  }
+  
+   
+        
+}
+
+void stopThrust() {
+  motorInput(stallPWM, stallPWM);
+}
+
+void motorInput(int one, int two) {
+
+  rightESC.writeMicroseconds(one);
+  leftESC.writeMicroseconds(two);
+}
+
+void diffThrust() {
+  motorInput(r_thrust,f_thrust);
+}
+
+
+void readLoadCell() { //some how extrapolate angle from this
+  float reading1=scale1.get_units();
+  float reading2=scale2.get_units();
+  int angle=(int)(atan2(reading2,reading1)/M_PI*180);
+  delay(200);
+}
