@@ -29,11 +29,14 @@ if not connection_string:
 
 # Connect to the Vehicle. 
 #   Set `wait_ready=True` to ensure default attributes are populated before `connect()` returns.
-print("\nConnecting to vehicle on: %s" % connection_string)
-vta = connect(connection_string, wait_ready=True)
+print("\nConnected to: 127.0.0.1:14551")
+#print("\nConnecting to vehicle on: %s" % connection_string)
+#vta = connect(connection_string, wait_ready=True)
+vta = connect('127.0.0.1:14551', wait_ready=False, baud=57600, heartbeat_timeout=180)
 
 vta.wait_ready('autopilot_version')
-print("\nConnected to: %s" % connection_string)
+#print("\nConnected to: %s" % connection_string)
+
 
 
 def arm(vehicle):
@@ -69,6 +72,13 @@ def disarm(vehicle):
     vehicle.armed = False
 
 
+arm(vta)
+time.sleep(20)
+goto(39.3628608, -76.339424, vta)
+time.sleep(60)
+
+
+"""
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
     running = True
@@ -90,7 +100,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             disarm(vta)
         elif "disarm" in dataStr:
             disarm(vta)
-            
+ """           
             
 vta.close()
 if sitl:

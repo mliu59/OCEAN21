@@ -1,9 +1,9 @@
 #include <HX711_ADC.h>
 #include "HX711.h"
-#define DOUT1  3
-#define CLK1  2
-#define DOUT2 5
-#define CLK2 4
+#define DOUT2  9
+#define CLK2  8
+#define DOUT1 11
+#define CLK1 10
 //#define M_PI 3.141592653
 
 HX711 scale1;
@@ -31,7 +31,7 @@ void setup() {
   Serial.println(zero_factor2);
   */
 
-  //Serial.println("Axis1,Axis2");
+  Serial.println("Axis1,Axis2");
 }
 
 void loop() {
@@ -39,18 +39,18 @@ void loop() {
   scale1.set_scale(calibration_factor1);
   scale1.set_scale(calibration_factor2);//Adjust to this calibration factor
 
-  float reading1 = scale1.get_units() / -14.3;
-  float reading2 = scale2.get_units() / 279285.7 / 0.85;
+  float reading1 = scale1.get_units() / 14.3 * -1;
+  float reading2 = scale2.get_units() / -279285.7 / 0.85 * -1;
   
-  Serial.print("Scale 1 Magnitude: ");
+  //Serial.print("Scale 1 Magnitude: ");
   Serial.println(reading1, 5);
-  //Serial.print(",");
+  Serial.print(",");
   //Serial.print("Scale 2 Magnitude: ");
-  //Serial.println(reading2, 5);
+  Serial.println(reading2, 5);
 
   int resolvedAngle = (int)(atan2(reading2, reading1)/M_PI*180);
   //Serial.println();
-  //Serial.println("Angle: " + String(resolvedAngle));
+  Serial.println("Angle: " + String(resolvedAngle));
   //Serial.println();
 
   delay(200);
