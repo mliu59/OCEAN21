@@ -1,6 +1,6 @@
 import numpy as np
 import math as math
-import geopy 
+from geopy import distance
 from geographiclib.geodesic import Geodesic ... 
 
 def findDistance(rovLat1,rovLong1,depth1, rovLat2,rovLong2,depth2):
@@ -16,10 +16,12 @@ def findDistance(rovLat1,rovLong1,depth1, rovLat2,rovLong2,depth2):
 	
 
 def findCOG(rovLat1,rovLong1,rovLat2,rovLong2):
-	 COG = Geodesic.WGS84.Inverse(lat1, long1, lat2, long2)['azi1']  #find the bearing of the path w/ respect to truth north (azimuth)
+	 COG = Geodesic.WGS84.Inverse(rovLat1, rovLong1, rovLat2,rovLong2)['azi1']  #find the bearing of the path w/ respect to truth north (azimuth)
 	 return COG
-def findSOG(rovLat1,rovLong1,rovLat2,rovLong2,Te): #TE is the time elapsed between the two sample points
-	D=findDistance(rovLat1,rovLong1,rovLat2,rovLong2)
+
+	 
+def findSOG(rovLat1,rovLong1,depth1,rovLat2,rovLong2,depth2,Te): #TE is the time elapsed between the two sample points
+	D=findDistance(rovLat1,rovLong1,depth1,rovLat2,rovLong2,depth2) 
 	SOG=D/Te
 	return SOG #Rate equation Distance/time elapsed S0G
 
