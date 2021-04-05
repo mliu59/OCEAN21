@@ -2,7 +2,8 @@ from __future__ import print_function
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 import time
 import socket
-#import vehicle.ICD_scripts.findDistance as dist
+import vehicle.ICD_scripts.findDistance as dist
+import vehicle.ICD_scripts.predictTraj as pred
 
 #Set up option parsing to get connection string
 import argparse  
@@ -37,6 +38,9 @@ vta = connect('127.0.0.1:14551', wait_ready=False, baud=57600, heartbeat_timeout
 vta.wait_ready('autopilot_version')
 #print("\nConnected to: %s" % connection_string)
 
+#variables
+#float forceThresh=
+#float tetherLength=
 
 
 def arm(vehicle):
@@ -70,7 +74,43 @@ def goto(lat, lon, vehicle):
 def disarm(vehicle):
     print("Disarming vehicle...")
     vehicle.armed = False
+def getForce():
+    #
+    return forceReading
 
+def triggerTugSteering(vehicle):
+
+
+def activeNavigation(vehicle, vehicle): #input should be both VTA and ROV
+   # rovDistance=dist.findDistance(vl_frame.long,vehicle.location.global_frame.depth, ROV)  irst and then going to fix the code
+   storeROVstate=rov.posdata
+   while (rovDistance>thresholdDistance): 
+        #write function to get data state
+        forceReading=getForce()
+        if forceReading>forceThresh
+            triggerTugSteering()
+            break 
+
+         #if data sucks, then break while loop, or force reading beyond threshold switch to tug steering
+         #checkDataQual check data quality 
+         predDist=pred.predictTraj(rov.lat,rov.long,rov.depth,rov.vmax,rov.vmax,rov.max,1) 
+         
+         time.sleep(1000)
+         dist=dist.findDistance(rov.lat,rov.long,rov.depth,rovX,rovY,rovZ)
+         if dist>predDist#define
+             triggerTugSteering()
+         vta.goto(rov.lat,rov.long,vta)
+         pos=vta.UpdatePOS
+         pos=ROV.updatePOS
+         while (vta Update POS returns null or rov pos update returns null) #hard_code Heartbeat timeout
+            int i=0
+            vta.UpdatePOS
+            rov.UpdatePOS
+            i=+
+            time.sleep(1000)
+            if i>10
+                triggerTugSteering()
+         rovDistance=dist.findDistance(vehicle.localation.global_frame.lat,vehicle.localation.global_frame.long,vehicle.location.global_frame.depth, ROV)  ##I don't know if I'm calling this right, trying to write the algo first and then going to fix the code
 
 arm(vta)
 time.sleep(20)
@@ -100,7 +140,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             disarm(vta)
         elif "disarm" in dataStr:
             disarm(vta)
- """           
+ """     
+
+
             
 vta.close()
 if sitl:
