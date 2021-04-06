@@ -4,7 +4,6 @@
 #include <HX711_ADC.h>
 #include "HX711.h"
 #include <MPU9250.h>
-#include <PID_v1.h>
 
 #define theta1 30
 #define theta2 75
@@ -14,12 +13,13 @@
 #define loadCellFrequency 5 //in Hz
 #define thresholdForceChangePerSecond 0.5 
 
+#define TARGET 145.0
 #define maxPWM 1900
 #define minPWM 1100
 #define stallPWM 1500
 
 #define calib false
-#define IMU_READ_PERIOD_MS 40
+#define IMU_READ_PERIOD_MS 25
 #define mag_dec -3.11
 
 #define DOUT2  9
@@ -43,17 +43,10 @@ MPU9250 mpu;
 double starting;
 double targetAbs;
 double angle;
+double Kp = 15;
 
 double coef1 = -14.3;
 double coef2 = 328571.4;
-
-
-
-double Setpoint, Input, Output;
-double Kp=10, Ki=0, Kd=3;
-
-PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
-
 
 struct loadCell {
   float reading1;
@@ -73,7 +66,7 @@ double getAbs(double a, double rel) {
   } 
   return b;
 }
-/*
+
 double getRel(double cur, double tar) {
   double c, t;
   c = cur;
@@ -85,12 +78,6 @@ double getRel(double cur, double tar) {
   double r = t - c;
   double l = 360 - r;
   return (r < l) ? r : -l;
-}*/
-
-double getRel(double cur, double tar) {
-  int c = (int)(10 * (cur + 180)) % 3600;
-  int t = (int)(10 * (tar + 180)) % 3600;
-  return (-1 * ((5400 + c - t) % 3600 - 1800)) / 10.0;
 }
 
 int clip(int val, int lower, int upper) {
@@ -154,26 +141,33 @@ void setup() {
   }
   */
 
+  Serial.println("Starting Yaw: " + String(starting));
+  Serial.println("Rel Target: " + String(TARGET));
+  Serial.println("Abs Target: " + String(targetAbs));
+
   //long zero_factor1 = scale1.read_average(); //Get a baseline reading
   //long zero_factor2 = scale2.read_average();
   
-  delay(20000);
-
-  resetPID();
-
-
-  motorInput(1900, 1900);
-  delay(3000);
-  
+  //delay(10000);
 }
 //need to add how to read load cell
 
 
 void loop() {
-  motorInput(1500, 1500);
-  /*
+  
   mpu.update();
   readLoadCell();
+  /*
+  Serial.print(String(mpu.getYaw()));
+  Serial.print(",");
+  Serial.print(lc.reading1);
+  Serial.print(",");
+  Serial.println(lc.reading2);
+  Serial.print(",");
+  Serial.print(lc.angle);
+  Serial.print(",");
+  Serial.println(lc.magnitude); 
+  */
   
   double firstReading = lc.magnitude;
   //delay(200);
@@ -182,42 +176,66 @@ void loop() {
   //double secondReading = lc.magnitude;
   //float force_dt=(secondReading-firstReading)/200;
   //(1000/loadCellFrequency);
-
   
+  Serial.println(firstReading);
+  //Serial.print(", ");
+  //Serial.print(secondReading);
+  //Serial.print(", ");
+  //Serial.println(force_dt);
+
   float mag = 0.5;
   if (abs(firstReading) > mag) {
   //if (abs(force_dt) > thresholdForceChangePerSecond){
 
-    Serial.println("Detected force! Starting angle");
+    Serial.println("Detected force!");
     
+    mpu.update();
     starting = mpu.getYaw();
-    Serial.println(String(starting));
-    targetAbs = getAbs(starting, lc.angle);
-    Serial.println(String(targetAbs));
+    targetAbs = -1*getAbs(starting, lc.angle);
     Serial.println(getRel(starting, targetAbs));
     unsigned long startingTime = millis();
-
-    Setpoint = 0;
-    resetPID();
-    
     while (millis() < startingTime + 10000) {
       mpu.update();
       double cur = mpu.getYaw();
-      Input = getRel(cur, targetAbs);
-      
-      Serial.print(Input);
-      Serial.print(", ");
-      myPID.Compute();
-      
-      Serial.println(Output);
-      motorInput(stallPWM + Output, stallPWM - Output);
-      delay(IMU_READ_PERIOD_MS / 2);
+      double rel = getRel(cur, targetAbs);
+      Serial.println(rel);
+      int PWM_diff = Kp * rel;
+      //Serial.println(PWM_diff);
+      motorInput(stallPWM - PWM_diff, stallPWM + PWM_diff);
+      delay(IMU_READ_PERIOD_MS);
     }
-  } else {
-    stopThrust();
-  }*/
-delay(IMU_READ_PERIOD_MS);
+    //targetAbs = getAbs(starting, lc.angle);
+    //boolean turning = true;
+    //unsigned long startingTime = millis();
+    /*
+    while (turning) {
+      mpu.update();
+      readLoadCell();
+      targetAbs = getAbs(starting, lc.magnitude - starting); //TODO
+      
+      if (millis() > startingTime + f_thrust_time) {
+        Serial.println("Stopping turn");
+        turning = false;
+      }
 
+      
+      if (abs(targetAbs) > theta2) {
+        Serial.println("above theta2");
+        fullDiffThrust(); //need to verify direction
+      } else if (abs(targetAbs) > theta1) {
+        int PWM_diff = Kd * targetAbs;
+        motorInput(f_turn + PWM_diff, f_turn - PWM_diff); //need to verify direction
+        Serial.println("above theta1");
+      } else {
+        motorInput(f_thrust, f_thrust);
+        Serial.println("straight");
+      }
+      
+      delay(IMU_READ_PERIOD_MS);*/
+    } else {
+      stopThrust();
+    }
+  delay(IMU_READ_PERIOD_MS);
 }
 
 void stopThrust() {
@@ -246,14 +264,6 @@ void fullDiffThrust() {
 void readLoadCell() { //some how extrapolate angle from this
   lc.reading1 = scale1.get_units() / coef1 / 21176.4;
   lc.reading2 = scale2.get_units() / coef2 * -1;
-  //lc.angle = (int)(atan2(lc.reading2,lc.reading1)/M_PI*180);
-  lc.angle = (int)(atan2(lc.reading2,lc.reading1)/M_PI*180) * 0.65;
+  lc.angle = (int)(atan2(lc.reading2,lc.reading1)/M_PI*180);
   lc.magnitude = sqrt(lc.reading1 * lc.reading1 + lc.reading2 * lc.reading2);
-}
-
-
-void resetPID() {
-  myPID.SetMode(AUTOMATIC);
-  myPID.SetOutputLimits(-400, 400);
-  myPID.SetSampleTime(IMU_READ_PERIOD_MS / 2);
 }
