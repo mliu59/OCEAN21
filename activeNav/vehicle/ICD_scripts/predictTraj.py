@@ -1,5 +1,4 @@
 import math
-import numpy
 
 def predictTraj(x,y,z,vN,vE,vD,t):
 	x2=x+vN*t
