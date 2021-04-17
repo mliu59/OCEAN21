@@ -5,8 +5,11 @@
 #include "HX711.h"
 #include <MPU9250.h>
 #include <PID_v1.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
 
-#define theta1 30
+#define theta1 20
 #define theta2 75
 #define f_turn 1650   //turning forward thrust pwm
 #define f_thrust_time 5000 //forward thrust time
@@ -17,13 +20,14 @@
 #define maxPWM 1900
 #define minPWM 1100
 #define stallPWM 1500
+#define forwardOffset 250
 
 #define calib false
 #define IMU_READ_PERIOD_MS 40
 #define mag_dec -3.11
 
 #define DOUT2  9
-#define CLK2  8
+#define CLK2  12
 #define DOUT1 11
 #define CLK1 10
 
@@ -34,9 +38,14 @@ HX711 scale1;
 HX711 scale2;
 Servo rightESC;
 Servo leftESC;
+Servo midESC;
+
+RF24 radio(7, 8); // CE, CSN
+const byte address[6] = "00001";
 
 byte esc1pin=5;
 byte esc2pin=6;
+byte esc3pin=3;
 
 MPU9250 mpu;
 
@@ -50,9 +59,11 @@ double coef2 = 328571.4;
 
 
 double Setpoint, Input, Output;
-double Kp=10, Ki=0, Kd=3;
+double Kp=8, Ki=0, Kd=3;
 
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
+
+char radioText[32] = "";
 
 
 struct loadCell {
@@ -103,15 +114,24 @@ int clip(int val, int lower, int upper) {
   }
 }
 void setup() {
+
+  radio.begin();
+  radio.openWritingPipe(address);
+  radio.setPALevel(RF24_PA_MIN);
+  radio.stopListening();
   
-  Serial.begin(115200);
+  Serial.begin(9600);
+
+  radioWrite("Serial setup");
+
+  
   Wire.begin();
   rightESC.attach(esc1pin);
   leftESC.attach(esc2pin);
+  midESC.attach(esc3pin);
   delay(5000);
 
   //load cell
-  Serial.begin(9600);
   scale1.begin(DOUT1, CLK1);
   scale2.begin(DOUT2, CLK2);
   
@@ -121,7 +141,7 @@ void setup() {
   scale2.tare();//Reset the scale to 0
 
    // Open serial communications and wait for port to open:
-    
+  //Serial.println("lmao");  
   if (!mpu.setup(0x68)) {
     while(1) {
       Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
@@ -136,7 +156,7 @@ void setup() {
     mpu.calibrateMag();
     //mpu.saveCalibration();    
   }
-  
+  //Serial.println("lmao");
   //loadCalibration();
   mpu.setMagneticDeclination(mag_dec);
 
@@ -144,6 +164,7 @@ void setup() {
     Serial.println("Init reading failed");
     delay(100);
   }
+  //Serial.println("lmao");
 
   /*
   unsigned long initT = millis();
@@ -156,22 +177,24 @@ void setup() {
 
   //long zero_factor1 = scale1.read_average(); //Get a baseline reading
   //long zero_factor2 = scale2.read_average();
+  radioWrite("Stopping motors");
   
-  delay(20000);
+  stopThrust();
+  //Serial.println("waiting 20");
+  //delay(10000);
 
   resetPID();
 
 
-  motorInput(1900, 1900);
-  delay(3000);
-  
+  //motorInput(1900, 1900, 1500);
+  delay(5000);
+  radioWrite("setup done");
 }
 //need to add how to read load cell
 
 
 void loop() {
-  motorInput(1500, 1500);
-  /*
+  
   mpu.update();
   readLoadCell();
   
@@ -183,52 +206,74 @@ void loop() {
   //float force_dt=(secondReading-firstReading)/200;
   //(1000/loadCellFrequency);
 
+  radioWrite(String(firstReading));
   
   float mag = 0.5;
   if (abs(firstReading) > mag) {
   //if (abs(force_dt) > thresholdForceChangePerSecond){
 
-    Serial.println("Detected force! Starting angle");
+    radioWrite("Detected force! Starting angle");
     
     starting = mpu.getYaw();
-    Serial.println(String(starting));
+    
+    radioWrite(String(firstReading));
     targetAbs = getAbs(starting, lc.angle);
-    Serial.println(String(targetAbs));
-    Serial.println(getRel(starting, targetAbs));
+    //Serial.println(String(targetAbs));
+    radioWrite(String(getRel(starting, targetAbs)));
     unsigned long startingTime = millis();
 
     Setpoint = 0;
     resetPID();
     
-    while (millis() < startingTime + 10000) {
+    while (millis() < startingTime + 5000) {
       mpu.update();
       double cur = mpu.getYaw();
       Input = getRel(cur, targetAbs);
       
-      Serial.print(Input);
-      Serial.print(", ");
+      //Serial.print(Input);
+      //Serial.print(", ");
       myPID.Compute();
       
-      Serial.println(Output);
-      motorInput(stallPWM + Output, stallPWM - Output);
+      //Serial.println(Output);
+      if (abs(Input) > theta2) {
+        motorInput(stallPWM + Output, stallPWM - Output, 1500);
+      } else if (abs(Input) > theta1) {
+        motorInput(stallPWM + Output + forwardOffset, stallPWM - Output + forwardOffset, 1500);
+      } else {
+        //fullForward();
+        
+        motorInput(1900, 1900, 1500);
+      }
       delay(IMU_READ_PERIOD_MS / 2);
     }
   } else {
     stopThrust();
-  }*/
+  }
+  
 delay(IMU_READ_PERIOD_MS);
 
 }
 
-void stopThrust() {
-  motorInput(stallPWM, stallPWM);
+void radioWrite(String a) {
+  Serial.println(a);
+  for (int i = 0; i < a.length(); i++) {
+    radioText[i] = a[i];
+  } 
+  radio.write(&radioText, sizeof(radioText)); 
 }
 
-void motorInput(int one, int two) {
+void stopThrust() {
+  motorInput(stallPWM, stallPWM, stallPWM);
+}
+
+void motorInput(int one, int two, int mid) {
   int r = clip(one, minPWM, maxPWM);
   int l = clip(two, minPWM, maxPWM);
+  int m = clip(mid, minPWM, maxPWM);
   rightESC.writeMicroseconds(map(r, 1100, 1900, 1900, 1100));
   leftESC.writeMicroseconds(map(l, 1100, 1900, 1900, 1100));
+  midESC.writeMicroseconds(map(m, 1100, 1900, 1900, 1100));
+  //radioWrite(String(r) +","+ String(l)+"," + String(m));
 }
 
 int getLoadCellAngle() {
@@ -237,18 +282,31 @@ int getLoadCellAngle() {
 
 void fullDiffThrust() {
   if (targetAbs > 0) {
-    motorInput(minPWM,maxPWM);
+    motorInput(minPWM,maxPWM, 0);
   } else {
-    motorInput(maxPWM,minPWM);
+    motorInput(maxPWM,minPWM, 0);
   }
 }
 
 void readLoadCell() { //some how extrapolate angle from this
-  lc.reading1 = scale1.get_units() / coef1 / 21176.4;
-  lc.reading2 = scale2.get_units() / coef2 * -1;
+  double r11 = scale1.get_units() / coef1 / 21176.4;
+  double r21 = scale2.get_units() / coef2 * -1;
+  delay(10);
+  double r12 = scale1.get_units() / coef1 / 21176.4;
+  double r22 = scale2.get_units() / coef2 * -1;
+  delay(10);
+  double r13 = scale1.get_units() / coef1 / 21176.4;
+  double r23 = scale2.get_units() / coef2 * -1;
+  
+  lc.reading1 = (r11 + r12 + r13)/3;
+  lc.reading2 = (r21 + r22 + r23)/3;
   //lc.angle = (int)(atan2(lc.reading2,lc.reading1)/M_PI*180);
   lc.angle = (int)(atan2(lc.reading2,lc.reading1)/M_PI*180) * 0.65;
   lc.magnitude = sqrt(lc.reading1 * lc.reading1 + lc.reading2 * lc.reading2);
+}
+
+void fullForward() {
+  motorInput(1900, 1900, 1900);
 }
 
 
