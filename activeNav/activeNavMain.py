@@ -2,23 +2,23 @@ from __future__ import print_function
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 import time
 import socket
-import activeNav.vehicle.ICD_scripts.findDistance as dist
-import activeNav.vehicle.ICD_scripts.predictTraj as pred
-import activeNav.vehicle.vehicleClass as vehicleClass
+#import activeNav.vehicle.ICD_scripts.findDistance as dist
+#import activeNav.vehicle.ICD_scripts.predictTraj as pred
+import vehicle.vehicleClass as vehicleClass
 
 connection_string = '127.0.0.1:14551'
 
 HOST = '127.0.0.1'  # The server's hostname or IP address
 PORT = 65432        # The port used by the server
 
-tetherLength = 100  # The tether length in meters
+tetherLength = 30  # The tether length in meters
 heartbeatTimeout = 10 # amount of time to wait for heartbeat before activating tug steering
 activeNavRestartTimer = 600 # amount of time to wait before restarting active Nav
 expectedROVRefresh = 1.0
 vtaMaxRefresh = expectedROVRefresh / 2
 watchdogThreshold = 50 # in meters
 
-vtaThreshold = 10 # in meters
+vtaThreshold = tetherLength / 2 # in meters
 
 
 def arm(vehicle):
@@ -125,7 +125,7 @@ def mainLoop():
     
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
-        print("\nConnected to ROV server: %s:%s" % HOST, PORT)
+        print("\nConnected to ROV server: " + HOST + " , " + str(PORT))
         
         running = True
         
@@ -137,8 +137,11 @@ def mainLoop():
                 newData = False
                 dataStr = readData(s)
                 
+                
                 #check the qualities of the data string
                 QUIT, dataQual, dataArgs = dataValidator(dataStr)
+                #print(dataArgs)
+                #print(QUIT, dataQual)
                 
                 #if data is kill message, stop active Nav entirely                
                 if QUIT:
@@ -151,9 +154,12 @@ def mainLoop():
                     tempROV.updateROV(dataArgs)
                     
                     #check watchdog if the temp ROV is a valid data point
-                    if not tempROV.watchdogFlag(lastROV, watchdogThreshold):
-                        lastROV.copyROV(tempROV)
-                        newData = True
+                    #if not tempROV.watchdogFlag(lastROV, watchdogThreshold):
+                    lastROV.copyROV(tempROV)
+                    newData = True
+                    #print(lastROV.getCoords())
+                    #print(lastROV.velocity)
+                    #print(lastROV.rpy)
                     #if not, ignore data and do nothing
                 
                 #update the VTA's position
@@ -161,15 +167,15 @@ def mainLoop():
                 
                 
                 if newData:
-                    if vtaThreshold > vta.getDistance(lastROV):
+                    if vtaThreshold < vta.getDistance(lastROV):
                         goto(lastROV.coords[0],lastROV.coords[1],vtaConnection)
                 
                 #if the ROV position was updated this loop
                 #check if the distance between the vta and the rov is greater than the tetherLength
                 #if so, stop this iteration of activeNav
-                if newData and tetherLength < vta.getDistance(lastROV):
-                    running = False
-                    break
+                #if newData and tetherLength < vta.getDistance(lastROV):
+                #    running = False
+                #    break
                 
                 #if timeout, stop this iteration of activeNav
                 if time.time() - lastROV.lastUpdated > heartbeatTimeout:
@@ -181,7 +187,6 @@ def mainLoop():
                 
                 
             time.sleep(activeNavRestartTimer)
-            activeNav = True
             
             
             
@@ -194,7 +199,7 @@ def mainLoop():
     #time.sleep(20)
     #goto(39.3628608, -76.339424, vtaConnection)
     #time.sleep(60)
-
+"""
 def activeNavigation(vta, rov): #input should be both VTA and ROV
     # rovDistance=dist.findDistance(vl_frame.long,vehicle.location.global_frame.depth, ROV)  irst and then going to fix the code
     storeROVstate=rov.posdata
@@ -227,9 +232,6 @@ def activeNavigation(vta, rov): #input should be both VTA and ROV
 
     return
 
-
-
-"""
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
     running = True
@@ -253,11 +255,5 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             disarm(vta)
  """     
 
-
-            
-
-    
-    
-    
 if __name__ == "__main__":
     mainLoop()

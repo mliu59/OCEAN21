@@ -2,7 +2,6 @@
 
 import socket
 import time
-import queue
 
 HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
 PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
@@ -15,18 +14,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     print('Waiting for client connection')
     conn, addr = s.accept()
     with conn:
-        print('Connected by', addr)
-        
-        conn.sendall(b"arm")
-        time.sleep(20)
-        counter = 0
-        while counter < 12:
-            coord = queue.pop(0)
-            conn.sendall(b"goto,%.8f,%.8f" % (coord[0], coord[1]))
-            queue.append(coord)
-            counter += 1
-            time.sleep(20)
-            
-        conn.sendall(b"disarm")
-        time.sleep(20)
-        conn.sendall(b"quit")
+        while True:
+            conn.sendall(b"0,D,39.331595,-76.616543,2.2,5.2,3.2,45.1,2.1,-0.2,-0.3*")
+            time.sleep(1)

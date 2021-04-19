@@ -1,6 +1,6 @@
-import activeNav.vehicle.ICD_scripts.findDistance as dist
-import activeNav.vehicle.ICD_scripts.predictTraj as pred
-import activenav.vehicle.ICD_scripts.convertVels as vels
+import vehicle.ICD_scripts.findDistance as dist
+import vehicle.ICD_scripts.predictTraj as pred
+import vehicle.ICD_scripts.convertVels as vels
 
 import time
 import copy
@@ -52,7 +52,8 @@ class rov(vehicle):
     def updateROV(self, dataArgs):
         # args is an array with all fields
         #[lat, lon, depth, roll, pitch, yaw, xv, yv, zv]
-        args = dataArgs[2:10]
+        args = dataArgs[2:11]
+        print(args)
         self.setCoords([args[0], args[1], args[2]])
         self.velocity = checkArray(self.velocity, [args[3], args[4], args[5]])
         self.rpy = checkArray(self.rpy, [args[6], args[7], args[8]])

@@ -31,6 +31,11 @@
 #define DOUT1 11
 #define CLK1 10
 
+unsigned long tugSteeringStart = 0;
+
+#define tugSteeringDuration 600000
+#define tugSteeringBurst 10000
+
 float calibration_factor1 = 20000.21;
 float calibration_factor2 = 20000.21;//-7050 worked for my 440lb max scale setup
 
@@ -56,10 +61,17 @@ double angle;
 double coef1 = -14.3;
 double coef2 = 328571.4;
 
-
+byte m1PWM = (A0); //M1 PWM values
+byte m2PWM = (A1);
 
 double Setpoint, Input, Output;
 double Kp=8, Ki=0, Kd=3;
+
+
+float mag = 0.75;
+
+
+
 
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
@@ -197,6 +209,7 @@ void loop() {
   
   mpu.update();
   readLoadCell();
+
   
   double firstReading = lc.magnitude;
   //delay(200);
@@ -205,52 +218,61 @@ void loop() {
   //double secondReading = lc.magnitude;
   //float force_dt=(secondReading-firstReading)/200;
   //(1000/loadCellFrequency);
-
-  radioWrite(String(firstReading));
+  //radioWrite(String(firstReading));
   
-  float mag = 0.5;
   if (abs(firstReading) > mag) {
-  //if (abs(force_dt) > thresholdForceChangePerSecond){
 
-    radioWrite("Detected force! Starting angle");
-    
-    starting = mpu.getYaw();
-    
+    tugSteeringStart = millis();
+    radioWrite("Detected force! Starting tug steering");
     radioWrite(String(firstReading));
-    targetAbs = getAbs(starting, lc.angle);
-    //Serial.println(String(targetAbs));
-    radioWrite(String(getRel(starting, targetAbs)));
-    unsigned long startingTime = millis();
-
-    Setpoint = 0;
-    resetPID();
     
-    while (millis() < startingTime + 5000) {
+    while (millis() < tugSteeringStart + tugSteeringDuration) {
       mpu.update();
-      double cur = mpu.getYaw();
-      Input = getRel(cur, targetAbs);
-      
-      //Serial.print(Input);
-      //Serial.print(", ");
-      myPID.Compute();
-      
-      //Serial.println(Output);
-      if (abs(Input) > theta2) {
-        motorInput(stallPWM + Output, stallPWM - Output, 1500);
-      } else if (abs(Input) > theta1) {
-        motorInput(stallPWM + Output + forwardOffset, stallPWM - Output + forwardOffset, 1500);
-      } else {
-        //fullForward();
+      readLoadCell();
+      firstReading = lc.magnitude;
+      if (abs(firstReading) > mag) {
+
+        tugSteeringStart = millis();
+        radioWrite("Detected force!");
+        radioWrite(String(firstReading));
+        starting = mpu.getYaw();
+        targetAbs = getAbs(starting, lc.angle);
+        radioWrite(String(getRel(starting, targetAbs)));
+        unsigned long startingTime = millis();
+    
+        Setpoint = 0;
+        resetPID();
         
-        motorInput(1900, 1900, 1500);
+        while (millis() < startingTime + tugSteeringBurst) {
+          mpu.update();
+          double cur = mpu.getYaw();
+          Input = getRel(cur, targetAbs);
+          
+          //Serial.print(Input);
+          //Serial.print(", ");
+          myPID.Compute();
+          
+          //Serial.println(Output);
+          if (abs(Input) > theta2) {
+            motorInput(stallPWM + Output, stallPWM - Output);
+          } else if (abs(Input) > theta1) {
+            motorInput(stallPWM + Output + forwardOffset, stallPWM - Output + forwardOffset);
+          } else {
+            
+            motorInput(1900, 1900);
+          }
+          delay(IMU_READ_PERIOD_MS / 2);
+        }
       }
-      delay(IMU_READ_PERIOD_MS / 2);
+      delay(IMU_READ_PERIOD_MS);
     }
-  } else {
-    stopThrust();
   }
+
+  int motor1=pulseIn(m1PWM,HIGH);
+  int motor2=pulseIn(m2PWM,HIGH);
+  motorInput(motor1,motor2);
   
-delay(IMU_READ_PERIOD_MS);
+  delay(IMU_READ_PERIOD_MS);
 
 }
 
@@ -263,16 +285,14 @@ void radioWrite(String a) {
 }
 
 void stopThrust() {
-  motorInput(stallPWM, stallPWM, stallPWM);
+  motorInput(stallPWM, stallPWM);
 }
 
-void motorInput(int one, int two, int mid) {
+void motorInput(int one, int two) {
   int r = clip(one, minPWM, maxPWM);
   int l = clip(two, minPWM, maxPWM);
-  int m = clip(mid, minPWM, maxPWM);
   rightESC.writeMicroseconds(map(r, 1100, 1900, 1900, 1100));
   leftESC.writeMicroseconds(map(l, 1100, 1900, 1900, 1100));
-  midESC.writeMicroseconds(map(m, 1100, 1900, 1900, 1100));
   //radioWrite(String(r) +","+ String(l)+"," + String(m));
 }
 
@@ -282,9 +302,9 @@ int getLoadCellAngle() {
 
 void fullDiffThrust() {
   if (targetAbs > 0) {
-    motorInput(minPWM,maxPWM, 0);
+    motorInput(minPWM,maxPWM);
   } else {
-    motorInput(maxPWM,minPWM, 0);
+    motorInput(maxPWM,minPWM);
   }
 }
 
@@ -306,7 +326,7 @@ void readLoadCell() { //some how extrapolate angle from this
 }
 
 void fullForward() {
-  motorInput(1900, 1900, 1900);
+  motorInput(1900, 1900);
 }
 
 
