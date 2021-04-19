@@ -109,7 +109,7 @@ while True:
 	vehiclePos=getROVCoords(ROV)
 	vehicleRPY=rov.rpy
 	vehicleSpeed=rov.velocity
-	dataString=str(vehiclePos[0])+","+str(vehiclePos[1])+","+str(0)+","+str(0)+","+str(0)+","+str(vehicleRPY[2])+","+str(vehicleSpeed[0])+","+str(vehicleSpeed[1])+","+str(0)+","+"*"
+	dataString=str(vehiclePos[0])+","+str(vehiclePos[1])+","+str(0)+","+str(0)+","+str(0)+","+str(vehicleRPY[2])+","+str(vehicleSpeed[0])+","+str(vehicleSpeed[1])+","+str(0)+","+str("*")
 	#print()
 	csvData=[vehiclePos[0],vehiclePos[1],0,0,0,vehicleRPY[2],vehicleSpeed[0],vehicleSpeed[1],0]
 	with open("ROVdata.csv", "a")as output:
