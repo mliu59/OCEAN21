@@ -8,9 +8,8 @@
 #define DOUT  3
 #define CLK  2
 
-#define PWMmax_R 1100
-#define PWMmax_F 1900
-#define stallPWM 1500
+#define minPWM 1100
+#define maxPWM 1900
 
 byte esc1pin=5;
 byte esc2pin=6;
@@ -20,12 +19,16 @@ Servo ESC2;
 
 HX711 scale;
 
+int m1 = 0;
+int m2 = 0;
+
+float reading = 0;
 
 byte m1PWM = (A0); //M1 PWM values
 byte m2PWM = (A1);
 
 // change this to match your SD shield or module;
-const int chipSelect = 10;
+const int chipSelect = 53;
 
 //File myFile;
 
@@ -58,15 +61,15 @@ void setup() {
   pinMode(m2PWM,INPUT);
   //Serial.print("Thrusters initalized");
 
-  /*
-  //Initialize SD Card
-  Serial.print("Initializing SD card...");
-  if (!SD.begin()) {
-    Serial.println("initialization failed!");
-    return;
+  
+  // see if the card is present and can be initialized:
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    while (1);
   }
-  Serial.println("initialization done.");
-  */
+  Serial.println("card initialized.");
+  
 
   if (calib) {
     motorInput(1900, 1900);
@@ -95,15 +98,15 @@ void loop() {
 
 
   scale.set_scale(calibration_factor); //Adjust to this calibration factor
-  float reading = scale.get_units();
+  reading = scale.get_units();
 
-  Serial.println(reading);
+  //Serial.println(reading);
 
-  motorInput(1100, 1100);
+  //motorInput(1100, 1100);
 
-  //int motor1=pulseIn(m1PWM,HIGH);
-  //int motor2=pulseIn(m2PWM,HIGH);
-  //motorInput(motor1,motor2); //Get PWM values from pulse in 
+  int motor1=pulseIn(m1PWM,HIGH);
+  int motor2=pulseIn(m2PWM,HIGH);
+  motorInput(motor1,motor2); //Get PWM values from pulse in 
 
   //unsigned long ElapsedTime = millis() - StartTime;
  
@@ -114,11 +117,38 @@ void loop() {
 
 }
 void stopThrust() {
-  motorInput(stallPWM, stallPWM);
+  motorInput(minPWM, minPWM);
+}
+
+void datalog() {
+  String dataString = String(millis()) + "," + String(m1) + "," + String(m2) + "," + String(reading);
+  
+  File dataFile = SD.open("datalog.csv", FILE_WRITE);
+  if (dataFile) {
+    dataFile.println(dataString);
+    dataFile.close();
+    // print to the serial port too:
+    Serial.println(dataString);
+  }
+  dataFile.close();
 }
 
 void motorInput(int one, int two) {
-  Serial.println(String(one) + " , " + String(two));
-  ESC1.writeMicroseconds(one);
-  ESC2.writeMicroseconds(two);
+  int r = clip(one, minPWM, maxPWM);
+  int l = clip(two, minPWM, maxPWM);
+  ESC1.writeMicroseconds(r);
+  ESC2.writeMicroseconds(l);
+  m1 = r;
+  m2 = l;
+  //radioWrite(String(r) +","+ String(l)+"," + String(m));
+}
+
+int clip(int val, int lower, int upper) {
+  if (val < lower) {
+    return lower;
+  } else if (val > upper) {
+    return upper;
+  } else {
+    return val;
+  }
 }

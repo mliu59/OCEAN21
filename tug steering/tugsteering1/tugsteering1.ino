@@ -6,8 +6,11 @@
 #include <MPU9250.h>
 #include <PID_v1.h>
 #include <SPI.h>
-#include <nRF24L01.h>
-#include <RF24.h>
+//#include <nRF24L01.h>
+//#include <RF24.h>
+#include <SD.h>
+
+const int chipSelect = 53;
 
 #define theta1 20
 #define theta2 75
@@ -32,6 +35,9 @@
 #define CLK1 10
 
 unsigned long tugSteeringStart = 0;
+int tugSteering = 0;
+int m1 = 0;
+int m2 = 0;
 
 #define tugSteeringDuration 600000
 #define tugSteeringBurst 10000
@@ -45,7 +51,7 @@ Servo rightESC;
 Servo leftESC;
 Servo midESC;
 
-RF24 radio(7, 8); // CE, CSN
+//RF24 radio(7, 8); // CE, CSN
 const byte address[6] = "00001";
 
 byte esc1pin=5;
@@ -127,10 +133,10 @@ int clip(int val, int lower, int upper) {
 }
 void setup() {
 
-  radio.begin();
-  radio.openWritingPipe(address);
-  radio.setPALevel(RF24_PA_MIN);
-  radio.stopListening();
+  //radio.begin();
+  //radio.openWritingPipe(address);
+  //radio.setPALevel(RF24_PA_MIN);
+  //radio.stopListening();
   
   Serial.begin(9600);
 
@@ -201,6 +207,16 @@ void setup() {
   //motorInput(1900, 1900, 1500);
   delay(5000);
   radioWrite("setup done");
+
+  Serial.print("Initializing SD card...");
+
+  // see if the card is present and can be initialized:
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    while (1);
+  }
+  Serial.println("card initialized.");
 }
 //need to add how to read load cell
 
@@ -221,15 +237,16 @@ void loop() {
   //radioWrite(String(firstReading));
   
   if (abs(firstReading) > mag) {
-
+    tugSteering = 1;
     tugSteeringStart = millis();
     radioWrite("Detected force! Starting tug steering");
     radioWrite(String(firstReading));
-    
+    datalog();
     while (millis() < tugSteeringStart + tugSteeringDuration) {
       mpu.update();
       readLoadCell();
       firstReading = lc.magnitude;
+      datalog();
       if (abs(firstReading) > mag) {
 
         tugSteeringStart = millis();
@@ -242,8 +259,10 @@ void loop() {
     
         Setpoint = 0;
         resetPID();
+        tugSteering = 2;
         
         while (millis() < startingTime + tugSteeringBurst) {
+          datalog();
           mpu.update();
           double cur = mpu.getYaw();
           Input = getRel(cur, targetAbs);
@@ -266,22 +285,35 @@ void loop() {
       }
       delay(IMU_READ_PERIOD_MS);
     }
+  } else {
+    int motor1=pulseIn(m1PWM,HIGH);
+    int motor2=pulseIn(m2PWM,HIGH);
+    motorInput(motor1,motor2);
+    datalog();
   }
-
-  int motor1=pulseIn(m1PWM,HIGH);
-  int motor2=pulseIn(m2PWM,HIGH);
-  motorInput(motor1,motor2);
-  
   delay(IMU_READ_PERIOD_MS);
 
 }
 
 void radioWrite(String a) {
-  Serial.println(a);
-  for (int i = 0; i < a.length(); i++) {
-    radioText[i] = a[i];
-  } 
-  radio.write(&radioText, sizeof(radioText)); 
+  //Serial.println(a);
+  //for (int i = 0; i < a.length(); i++) {
+  //  radioText[i] = a[i];
+  //} 
+  //radio.write(&radioText, sizeof(radioText)); 
+}
+
+void datalog() {
+  String dataString = String(millis()) + "," + String(tugSteering) + "," + String(lc.magnitude) + "," + String(lc.angle) + "," + String(m1) + "," + String(m2) + "," + String(mpu.getYaw());
+  
+  File dataFile = SD.open("datalog.csv", FILE_WRITE);
+  if (dataFile) {
+    dataFile.println(dataString);
+    dataFile.close();
+    // print to the serial port too:
+    Serial.println(dataString);
+  }
+  dataFile.close();
 }
 
 void stopThrust() {
@@ -293,6 +325,8 @@ void motorInput(int one, int two) {
   int l = clip(two, minPWM, maxPWM);
   rightESC.writeMicroseconds(map(r, 1100, 1900, 1900, 1100));
   leftESC.writeMicroseconds(map(l, 1100, 1900, 1900, 1100));
+  m1 = r;
+  m2 = l;
   //radioWrite(String(r) +","+ String(l)+"," + String(m));
 }
 

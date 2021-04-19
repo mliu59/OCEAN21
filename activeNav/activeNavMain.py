@@ -5,6 +5,8 @@ import socket
 #import activeNav.vehicle.ICD_scripts.findDistance as dist
 #import activeNav.vehicle.ICD_scripts.predictTraj as pred
 import vehicle.vehicleClass as vehicleClass
+import csv
+
 
 connection_string = '127.0.0.1:14551'
 
@@ -115,86 +117,90 @@ def startConnection(connection_string):
     
 
 def mainLoop():
-    
-    vtaConnection = startConnection(connection_string)
-    arm(vtaConnection)
-    
-    vta = vehicleClass.vehicle()
-    lastROV = vehicleClass.rov()
-    tempROV = vehicleClass.rov()
-    
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((HOST, PORT))
-        print("\nConnected to ROV server: " + HOST + " , " + str(PORT))
+    with open("vtaData.csv", "a")as output:
+        writer = csv.writer(output, delimiter=",")
+        vtaConnection = startConnection(connection_string)
+        arm(vtaConnection)
         
-        running = True
+        vta = vehicleClass.vehicle()
+        lastROV = vehicleClass.rov()
+        tempROV = vehicleClass.rov()
         
-        while running:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((HOST, PORT))
+            print("\nConnected to ROV server: " + HOST + " , " + str(PORT))
             
-            while True:
+            running = True
+            
+            while running:
                 
-                #variable for checking if in this loop, rov data was updated
-                newData = False
-                dataStr = readData(s)
-                
-                
-                #check the qualities of the data string
-                QUIT, dataQual, dataArgs = dataValidator(dataStr)
-                #print(dataArgs)
-                #print(QUIT, dataQual)
-                
-                #if data is kill message, stop active Nav entirely                
-                if QUIT:
-                    running = False
-                    break
-                
-                #if data quality is good
-                if dataQual:
-                    #update the temp ROV object with new data
-                    tempROV.updateROV(dataArgs)
+                while True:
                     
-                    #check watchdog if the temp ROV is a valid data point
-                    #if not tempROV.watchdogFlag(lastROV, watchdogThreshold):
-                    lastROV.copyROV(tempROV)
-                    newData = True
-                    #print(lastROV.getCoords())
-                    #print(lastROV.velocity)
-                    #print(lastROV.rpy)
-                    #if not, ignore data and do nothing
-                
-                #update the VTA's position
-                vta.updateCoords(getVTACoords(vtaConnection), vtaMaxRefresh)
-                
-                
-                if newData:
-                    if vtaThreshold < vta.getDistance(lastROV):
-                        goto(lastROV.coords[0],lastROV.coords[1],vtaConnection)
-                
-                #if the ROV position was updated this loop
-                #check if the distance between the vta and the rov is greater than the tetherLength
-                #if so, stop this iteration of activeNav
-                #if newData and tetherLength < vta.getDistance(lastROV):
-                #    running = False
-                #    break
-                
-                #if timeout, stop this iteration of activeNav
-                if time.time() - lastROV.lastUpdated > heartbeatTimeout:
-                    break
-                
-                
+                    #variable for checking if in this loop, rov data was updated
+                    newData = False
+                    dataStr = readData(s)
+                    #print(dataStr)
+                    
+                    #check the qualities of the data string
+                    QUIT, dataQual, dataArgs = dataValidator(dataStr)
+                    print(dataArgs)
+                    #print(QUIT, dataQual)
+                    csvData=[str(time.time())]
+                    csvData.extend(dataArgs)
+                    
+                    #if data is kill message, stop active Nav entirely                
+                    if QUIT:
+                        running = False
+                        break
+                    
+                    #if data quality is good
+                    if dataQual:
+                        #update the temp ROV object with new data
+                        tempROV.updateROV(dataArgs)
+                        
+                        #check watchdog if the temp ROV is a valid data point
+                        #if not tempROV.watchdogFlag(lastROV, watchdogThreshold):
+                        lastROV.copyROV(tempROV)
+                        newData = True
+                        #print(lastROV.getCoords())
+                        #print(lastROV.velocity)
+                        #print(lastROV.rpy)
+                        #if not, ignore data and do nothing
+                    
+                    #update the VTA's position
+                    #vta.updateCoords(getVTACoords(vtaConnection), vtaMaxRefresh)
                     
                     
+                    if newData:
+                        if vtaThreshold < vta.getDistance(lastROV):
+                            goto(lastROV.coords[0],lastROV.coords[1],vtaConnection)
+                    
+                    #if the ROV position was updated this loop
+                    #check if the distance between the vta and the rov is greater than the tetherLength
+                    #if so, stop this iteration of activeNav
+                    #if newData and tetherLength < vta.getDistance(lastROV):
+                    #    running = False
+                    #    break
+                    
+                    #if timeout, stop this iteration of activeNav
+                    if time.time() - lastROV.lastUpdated > heartbeatTimeout:
+                        break
+
+                    writer.writerow(csvData)
+                    
+                        
+                        
+                    
+                    
+                time.sleep(activeNavRestartTimer)
                 
                 
-            time.sleep(activeNavRestartTimer)
-            
-            
-            
-            
-            
-    
-    print("Closing script")
-    vtaConnection.close()
+                
+                
+                
+        
+        print("Closing script")
+        vtaConnection.close()
     
     #time.sleep(20)
     #goto(39.3628608, -76.339424, vtaConnection)
