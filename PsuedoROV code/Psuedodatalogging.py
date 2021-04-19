@@ -111,8 +111,9 @@ while True:
 	vehicleSpeed=rov.velocity
 	dataString=str(vehiclePos[0])+","+str(vehiclePos[1])+","+str(0)+","+str(0)+","+str(0)+","+str(vehicleRPY[2])+","+str(vehicleSpeed[0])+","+str(vehicleSpeed[1])+","+str(0)+","+"*"
 	#print()
+	csvData=[vehiclePos[0],vehiclePos[1],0,0,0,vehicleRPY[2],vehicleSpeed[0],vehicleSpeed[1],0]
 	with open("ROVdata.csv", "a")as output:
-        writer = csv.writer(output, delimiter=",")
-        writer.writerow(dataString)
+		writer = csv.writer(output, delimiter=",")
+		writer.writerow(csvData)
 	#Write your code to send the code to VTA (i think)
 	time.sleep(1000)
