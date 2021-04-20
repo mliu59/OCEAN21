@@ -85,10 +85,10 @@ void setup() {
   } else {
 
     motorInput(1100, 1100);
-    delay(15000);
-  
-    motorInput(1900, 1900);
     delay(6000);
+    Serial.println("setup done");
+    //motorInput(1900, 1900);
+    //delay(6000);
   }
 }
 
@@ -100,16 +100,16 @@ void loop() {
   scale.set_scale(calibration_factor); //Adjust to this calibration factor
   reading = scale.get_units();
 
-  //Serial.println(reading);
+  Serial.println(reading);
 
   //motorInput(1100, 1100);
 
   int motor1=pulseIn(m1PWM,HIGH);
   int motor2=pulseIn(m2PWM,HIGH);
   motorInput(motor1,motor2); //Get PWM values from pulse in 
-
+  Serial.println(String(motor1) + ", " + String(motor2));
   //unsigned long ElapsedTime = millis() - StartTime;
- 
+  datalog();
   //delay(1000); //allow for motors
   //myFile.println(String(ElapsedTime)+ "," + String(reading)+ "," +String(motor1)+ "," +String(motor2)); 
   //myFile.close();

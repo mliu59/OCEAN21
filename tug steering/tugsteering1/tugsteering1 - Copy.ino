@@ -1,4 +1,4 @@
-//#include "eeprom_utils.h"
+#include "eeprom_utils.h"
 #include <Wire.h>
 #include <Servo.h> 
 #include <HX711_ADC.h>
@@ -140,7 +140,7 @@ void setup() {
   
   Serial.begin(9600);
 
-  //radioWrite("Serial setup");
+  radioWrite("Serial setup");
 
   
   Wire.begin();
@@ -166,7 +166,7 @@ void setup() {
       delay(5000);
     }
   }
-  /*
+
   if (calib) {
     Serial.println("Accel & Gyro");
     mpu.calibrateAccelGyro();
@@ -174,7 +174,6 @@ void setup() {
     mpu.calibrateMag();
     //mpu.saveCalibration();    
   }
-  */
   //Serial.println("lmao");
   //loadCalibration();
   mpu.setMagneticDeclination(mag_dec);
@@ -240,8 +239,8 @@ void loop() {
   //radioWrite(String(firstReading));
   
   if (abs(firstReading) > mag) {
-    //tugSteering = 1;
-    //tugSteeringStart = millis();
+    tugSteering = 1;
+    tugSteeringStart = millis();
     //radioWrite("Detected force! Starting tug steering");
     //radioWrite(String(firstReading));
     //datalog();
@@ -253,11 +252,11 @@ void loop() {
       //if (abs(firstReading) > mag) {
 
         //tugSteeringStart = millis();
-        //radioWrite("Detected force!");
-        //radioWrite(String(firstReading));
+        radioWrite("Detected force!");
+        radioWrite(String(firstReading));
         starting = mpu.getYaw();
         targetAbs = getAbs(starting, lc.angle);
-        //radioWrite(String(getRel(starting, targetAbs)));
+        radioWrite(String(getRel(starting, targetAbs)));
         unsigned long startingTime = millis();
     
         Setpoint = 0;
@@ -294,9 +293,9 @@ void loop() {
   //  motorInput(motor1,motor2);
   //  datalog();
   //}
-  //delay(IMU_READ_PERIOD_MS);
+  delay(IMU_READ_PERIOD_MS);
 
-//}
+}
 
 void radioWrite(String a) {
   //Serial.println(a);
