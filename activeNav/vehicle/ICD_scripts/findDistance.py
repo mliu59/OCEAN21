@@ -26,3 +26,5 @@ def findDistance(rovLat1,rovLong1,depth1, rovLat2,rovLong2,depth2):
 	
 """
 	
+print(findDistance(39.3652081, -76.3390455, 0, 39.365485, -76.3389905, 0))
+print(findDistance(39.365485, -76.3389905, 0, 39.3654725, -76.3389301, 0))
