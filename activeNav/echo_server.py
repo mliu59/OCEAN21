@@ -3,10 +3,8 @@
 import socket
 import time
 
-HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
+HOST = '0.0.0.0'  # Standard loopback interface address (localhost)
 PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
-
-queue = [[39.363303, -76.339240], [39.362940, -76.339271], [39.362942, -76.339605], [39.363249, -76.339550]]
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind((HOST, PORT))

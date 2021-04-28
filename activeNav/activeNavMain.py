@@ -10,7 +10,11 @@ import csv
 
 connection_string = '127.0.0.1:14551'
 
-HOST = '127.0.0.1'  # The server's hostname or IP address
+HOST = '169.254.205.82'  # The server's hostname or IP address
+#cmd 
+#ipconfig
+
+
 PORT = 65432        # The port used by the server
 
 tetherLength = 30  # The tether length in meters
@@ -119,8 +123,8 @@ def startConnection(connection_string):
 def mainLoop():
     with open("vtaData.csv", "a")as output:
         writer = csv.writer(output, delimiter=",")
-        vtaConnection = startConnection(connection_string)
-        arm(vtaConnection)
+        #vtaConnection = startConnection(connection_string)
+        #arm(vtaConnection)
         
         vta = vehicleClass.vehicle()
         lastROV = vehicleClass.rov()
@@ -170,10 +174,11 @@ def mainLoop():
                     #update the VTA's position
                     #vta.updateCoords(getVTACoords(vtaConnection), vtaMaxRefresh)
                     
-                    
+                    """
                     if newData:
                         if vtaThreshold < vta.getDistance(lastROV):
                             goto(lastROV.coords[0],lastROV.coords[1],vtaConnection)
+                    """
                     
                     #if the ROV position was updated this loop
                     #check if the distance between the vta and the rov is greater than the tetherLength
@@ -200,7 +205,7 @@ def mainLoop():
                 
         
         print("Closing script")
-        vtaConnection.close()
+        #vtaConnection.close()
     
     #time.sleep(20)
     #goto(39.3628608, -76.339424, vtaConnection)
