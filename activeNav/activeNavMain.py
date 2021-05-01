@@ -10,7 +10,8 @@ import csv
 
 connection_string = '127.0.0.1:14551'
 
-HOST = '169.254.205.82'  # The server's hostname or IP address
+HOST = '172.20.10.3'  # The server's hostname or IP address
+#HOST = '127.0.0.1'
 #cmd 
 #ipconfig
 
@@ -188,8 +189,8 @@ def mainLoop():
                     #    break
                     
                     #if timeout, stop this iteration of activeNav
-                    if time.time() - lastROV.lastUpdated > heartbeatTimeout:
-                        break
+                    #if time.time() - lastROV.lastUpdated > heartbeatTimeout:
+                    #    break
 
                     writer.writerow(csvData)
                     
