@@ -7,15 +7,9 @@ import socket
 import vehicle.vehicleClass as vehicleClass
 import csv
 
-
 connection_string = '127.0.0.1:14551'
 
 HOST = '172.20.10.3'  # The server's hostname or IP address
-#HOST = '127.0.0.1'
-#cmd 
-#ipconfig
-
-
 PORT = 65432        # The port used by the server
 
 tetherLength = 30  # The tether length in meters
@@ -24,7 +18,6 @@ activeNavRestartTimer = 600 # amount of time to wait before restarting active Na
 expectedROVRefresh = 1.0
 vtaMaxRefresh = expectedROVRefresh / 2
 watchdogThreshold = 50 # in meters
-
 vtaThreshold = tetherLength / 2 # in meters
 
 
@@ -53,19 +46,11 @@ def goto(lat, lon, vehicle):
     point = LocationGlobalRelative(lat, lon, 0)
     vehicle.simple_goto(point)
     print(f"Going to {lat}, {lon}")
-    #distance = dist.findDistance(vehicle.location.global_frame.lat, vehicle.location.global_frame.lon, 0, lat, lon, 0)
-    #while (distance)
 
 def disarm(vehicle):
     print("Disarming vehicle...")
     vehicle.armed = False
-    
-def checkForce():
-    #float forceThresh=
-    # TODO
-    return True
-def triggerTugSteering():
-    return
+
 
 def dataValidator(dataStr):
     # args is an array with all fields
@@ -124,8 +109,8 @@ def startConnection(connection_string):
 def mainLoop():
     with open("vtaData.csv", "a")as output:
         writer = csv.writer(output, delimiter=",")
-        #vtaConnection = startConnection(connection_string)
-        #arm(vtaConnection)
+        vtaConnection = startConnection(connection_string)
+        arm(vtaConnection)
         
         vta = vehicleClass.vehicle()
         lastROV = vehicleClass.rov()
@@ -173,24 +158,22 @@ def mainLoop():
                         #if not, ignore data and do nothing
                     
                     #update the VTA's position
-                    #vta.updateCoords(getVTACoords(vtaConnection), vtaMaxRefresh)
+                    vta.updateCoords(getVTACoords(vtaConnection), vtaMaxRefresh)
                     
-                    """
                     if newData:
                         if vtaThreshold < vta.getDistance(lastROV):
                             goto(lastROV.coords[0],lastROV.coords[1],vtaConnection)
-                    """
                     
                     #if the ROV position was updated this loop
                     #check if the distance between the vta and the rov is greater than the tetherLength
                     #if so, stop this iteration of activeNav
-                    #if newData and tetherLength < vta.getDistance(lastROV):
-                    #    running = False
-                    #    break
+                    if newData and tetherLength < vta.getDistance(lastROV):
+                        running = False
+                        break
                     
                     #if timeout, stop this iteration of activeNav
-                    #if time.time() - lastROV.lastUpdated > heartbeatTimeout:
-                    #    break
+                    if time.time() - lastROV.lastUpdated > heartbeatTimeout:
+                        break
 
                     writer.writerow(csvData)
                     
@@ -206,66 +189,7 @@ def mainLoop():
                 
         
         print("Closing script")
-        #vtaConnection.close()
-    
-    #time.sleep(20)
-    #goto(39.3628608, -76.339424, vtaConnection)
-    #time.sleep(60)
-"""
-def activeNavigation(vta, rov): #input should be both VTA and ROV
-    # rovDistance=dist.findDistance(vl_frame.long,vehicle.location.global_frame.depth, ROV)  irst and then going to fix the code
-    storeROVstate=rov.posdata
-    while (rovDistance>thresholdDistance): 
-        #write function to get data state
-        if not checkForce():
-            triggerTugSteering()
-            break 
-
-        #if data sucks, then break while loop, or force reading beyond threshold switch to tug steering
-        #checkDataQual check data quality 
-        predDist=pred.predictTraj(rov.lat,rov.long,rov.depth,rov.vmax,rov.vmax,rov.max,1) 
-         
-        time.sleep(1000)
-        dist=dist.findDistance(rov.lat,rov.long,rov.depth,rovX,rovY,rovZ)
-        if dist>predDist: #define
-            triggerTugSteering()
-        vta.goto(rov.lat,rov.long,vta)
-        pos=vta.UpdatePOS
-        pos=ROV.updatePOS
-        while (vta Update POS returns null or rov pos update returns null) : #hard_code Heartbeat timeout
-            i = 0
-            vta.UpdatePOS
-            rov.UpdatePOS
-            i = i + 1
-            time.sleep(1000)
-            if i>10 :
-                triggerTugSteering()
-        rovDistance=dist.findDistance(vehicle.localation.global_frame.lat,vehicle.localation.global_frame.long,vehicle.location.global_frame.depth, ROV)  ##I don't know if I'm calling this right, trying to write the algo first and then going to fix the code
-
-    return
-
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.connect((HOST, PORT))
-    running = True
-    while running:
-        data = s.recv(1024)
-        dataStr = data.decode("utf-8")
-
-        print('Received: ', dataStr)
-        if "arm" in dataStr and "disarm" not in dataStr:
-            arm(vta)
-        elif "goto" in dataStr:
-            #data: "goto,lat,lon"
-            if not vta.armed:
-                arm(vta)
-            args = dataStr.split(",")
-            goto(float(args[1]), float(args[2]), vta)
-        elif "quit" in dataStr:
-            running = False
-            disarm(vta)
-        elif "disarm" in dataStr:
-            disarm(vta)
- """     
+        vtaConnection.close()
 
 if __name__ == "__main__":
     mainLoop()
